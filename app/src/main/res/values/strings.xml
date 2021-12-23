@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">UwbLiao</string>
+    <string name="settings">设置</string>
+    <string name="my_nickname">我的昵称</string>
+    <string name="my_gender">我的性别</string>
+    <string name="search_gender">寻找性别</string>
+    <string name="gender_male">男</string>
+    <string name="gender_female">女</string>
+    <string name="gender_other1">不公开</string>
+    <string name="gender_other2">不问</string>
+</resources>
