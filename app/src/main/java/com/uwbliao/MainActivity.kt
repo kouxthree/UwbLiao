@@ -38,17 +38,17 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-//        //observe scanNums
-//        _scanRemoteNums = MutableLiveData<Int>().apply {
-//            value = SettingActivity.scanRemoteNums
-//        }
-//        _scanRemoteNums.observe(this,{
-//            mainCanvasView.initRemoteDevs()
-//        })
+        //observe scanNums
+        _scanRemoteNums = MutableLiveData<Int>().apply {
+            value = SettingActivity.scanRemoteNums
+        }
+        _scanRemoteNums.observe(this,{
+            mainCanvasView.initRemoteDevs()
+        })
     }
 
     private lateinit var mainCanvasView: MainCanvasView
-//    private lateinit var _scanRemoteNums: LiveData<Int>
+    private lateinit var _scanRemoteNums: LiveData<Int>
     //start setting activity
     private val startSettingActivity =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {

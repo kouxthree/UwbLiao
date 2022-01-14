@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">UwbLiao</string>
     <string name="settings">设置</string>
+    <string name="txt_me">我</string>
     <string name="my_nickname">我的昵称</string>
     <string name="my_gender">我的性别</string>
     <string name="search_gender">寻找性别</string>

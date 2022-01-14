@@ -2,25 +2,22 @@ package com.uwbliao
 
 import android.app.AlertDialog
 import android.content.Context
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import androidx.core.content.res.ResourcesCompat
+import com.uwbliao.databinding.RemoteDevDspBinding
 import com.uwbliao.db.EntityDevice
 import org.apache.commons.math3.distribution.UniformIntegerDistribution
-import android.view.MotionEvent
-import android.view.View.OnTouchListener
-import android.view.inputmethod.EditorInfo
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import com.uwbliao.databinding.RemoteDevDspBinding
-import com.uwbliao.db.Gender
 import kotlin.math.cos
-import kotlin.math.pow
 import kotlin.math.sin
-import kotlin.random.Random
 
 class MainCanvasView(context: Context): View(context) {
     private var remoteDevs = mutableListOf<EntityDevice>()
@@ -30,15 +27,14 @@ class MainCanvasView(context: Context): View(context) {
     }
     fun initRemoteDevs() {
         //remote dev init/using view width,height
-//        for(i in 0..SettingActivity.scanRemoteNums) {
-        for(i in 0 until 9) {
-            var dev = EntityDevice()
+        remoteDevs = mutableListOf()
+        for(i in 0 until SettingActivity.scanRemoteNums) {
+            val dev = EntityDevice()
             remoteDevs.add(dev)
             dev.deviceName = i.toString()
-            updateRemoteLocation(dev)
         }
-        remoteDevs[0].nickname = "貂蝉"
-        remoteDevs[3].nickname = "西施"
+        if(remoteDevs.size > 0) remoteDevs[0].nickname = "西施"
+        if(remoteDevs.size > 2) remoteDevs[2].nickname = "貂蝉"
     }
     private var infoRefreshHandler: Handler = Handler(Looper.getMainLooper())//for info refreshing
     private var infoRefreshTask = object : Runnable {
@@ -82,7 +78,7 @@ class MainCanvasView(context: Context): View(context) {
         var y2 = y + TAP_ACCURACY
         if(x1<0) x1 = 0
         if(y1<0) y1 = 0
-        if(x2>width) x1 = width
+        if(x2>width) x2 = width
         if(y2>height) y2 = height
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
@@ -111,8 +107,8 @@ class MainCanvasView(context: Context): View(context) {
         dsp.setView(mBinding.root.rootView)
         val dlg = dsp.create()
         dlg.setCanceledOnTouchOutside(true)
-        mBinding.txtNickname.setText(remoteDevs[idx].nickname.toString())
-        mBinding.txtDistance.setText(remoteDevs[idx].distance.toString())
+        mBinding.txtNickname.text = idx.toString() + ":" + remoteDevs[idx].nickname.toString()
+        mBinding.txtDistance.text = fromCoordinateToDistance(remoteDevs[idx].distance).formatDecimalPoint1() + "m"
         //cancel button
         mBinding.btnCancel.setOnClickListener {
             dlg.dismiss()
@@ -157,7 +153,6 @@ class MainCanvasView(context: Context): View(context) {
         //distance mark
         val x = (width)/2.toFloat()
         extraCanvas.drawText(MID_DISTANCE.toString()+"m", x, centerY-r, distancePaint)
-//        extraCanvas.drawText(MID_DISTANCE.toString()+"m", x, centerY+r, distancePaint)
     }
     private fun drawNear() {
         val r = (width/4).toFloat()
@@ -174,7 +169,6 @@ class MainCanvasView(context: Context): View(context) {
         //distance mark
         val x = (width)/2.toFloat()
         extraCanvas.drawText(NEAR_DISTANCE.toString()+"m", x, centerY-r, distancePaint)
-//        extraCanvas.drawText(NEAR_DISTANCE.toString()+"m", x, centerY+r, distancePaint)
     }
     private fun drawMe() {
         val r = ME_RADIUS
@@ -188,6 +182,9 @@ class MainCanvasView(context: Context): View(context) {
             strokeWidth = STROKE_WIDTH
         }
         extraCanvas.drawCircle(centerX, centerY, r, paint)
+        //me
+        paint.color = ResourcesCompat.getColor(resources, R.color.distancePaint, null)
+        extraCanvas.drawText(context.getString(R.string.txt_me), centerX, centerY+5, distancePaint)
     }
     private fun redrawBackground() {
         drawMid()
@@ -210,7 +207,6 @@ class MainCanvasView(context: Context): View(context) {
     private fun refreshInfo() {
         extraCanvas.drawColor(backgroundColorFar)
         redrawBackground()
-        if(remoteDevs == null) return
         for(i in 0..1) {
             if(i > remoteDevs.size-1) break
             updateRemoteLocation(remoteDevs[i])
@@ -218,6 +214,7 @@ class MainCanvasView(context: Context): View(context) {
         }
         for(i in 2 until SettingActivity.scanRemoteNums) {
             if(i > remoteDevs.size-1) break
+            if(remoteDevs[i].distance == null) updateRemoteLocation(remoteDevs[i])
             drawRemote(i, remoteDevs[i])
         }
     }
@@ -234,5 +231,20 @@ class MainCanvasView(context: Context): View(context) {
         remoteDev.distance = r
         remoteDev.currentx = centerX + r* cos(theta).toFloat()
         remoteDev.currenty = centerY + r* sin(theta).toFloat()
+    }
+    //utils
+    private fun fromCoordinateToDistance(c: Int?): Float {
+        var r = if(c == null) {
+            0f
+        } else {
+            c.toFloat()
+        }
+        r *= (NEAR_DISTANCE * 4f / width)
+        return r
+    }
+    fun Float?.formatDecimalPoint1(): String{
+        if(this == null) return ""
+        var fmt = "%.${1}f"
+        return fmt.format(this)
     }
 }
