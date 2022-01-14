@@ -11,4 +11,5 @@
     <color name="colorBackgroundMid">#FF6200EE</color>
     <color name="colorBackgroundFar">#FFBB86FC</color>
     <color name="colorPaint">#FFFFFFFF</color>
+    <color name="distancePaint">#44000000</color>
 </resources>

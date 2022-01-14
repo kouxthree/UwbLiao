@@ -7,6 +7,9 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import com.uwbliao.db.RepSetting
 
 class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -26,10 +29,26 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val mainCanvasView = MainCanvasView(this)
+        //scanNums
+        val repsetting = RepSetting()
+        SettingActivity.scanRemoteNums = repsetting.entitySetting!!.scanNums
+        mainCanvasView = MainCanvasView(this)
         setContentView(mainCanvasView)
     }
 
+    override fun onResume() {
+        super.onResume()
+//        //observe scanNums
+//        _scanRemoteNums = MutableLiveData<Int>().apply {
+//            value = SettingActivity.scanRemoteNums
+//        }
+//        _scanRemoteNums.observe(this,{
+//            mainCanvasView.initRemoteDevs()
+//        })
+    }
+
+    private lateinit var mainCanvasView: MainCanvasView
+//    private lateinit var _scanRemoteNums: LiveData<Int>
     //start setting activity
     private val startSettingActivity =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {

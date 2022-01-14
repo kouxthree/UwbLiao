@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -32,13 +31,13 @@
                 android:id="@+id/txt_my_nickname"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@+id/app_name"
+                android:text="@string/app_name"
                 android:inputType="text"
                 android:maxLines="1"
                 android:maxLength="10"
                 android:textSize="20sp"
-                android:autofillHints=""
-                tools:ignore="LabelFor" />
+                android:hint="@string/my_nickname"
+                android:autofillHints="@string/my_nickname" />
             <Space android:layout_width="wrap_content"
                 android:layout_height="10dp"/>
 
@@ -125,6 +124,20 @@
                     android:text="@string/gender_other2"
                     android:textSize="20sp" />
             </RadioGroup>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/scan_nums"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+            <NumberPicker
+                android:id="@+id/scan_nums"
+                android:layout_width="wrap_content"
+                android:layout_height="60sp"
+                android:layout_marginStart="30dp"
+                android:theme="@style/Theme.Picker"
+                />
 
         </LinearLayout>
     </ScrollView>

@@ -8,4 +8,7 @@
     <string name="gender_female">女</string>
     <string name="gender_other1">不公开</string>
     <string name="gender_other2">不问</string>
+    <string name="scan_nums">同时搜寻人数</string>
+    <string name="txt_distance">距离</string>
+    <string name="txt_invitation">你好</string>
 </resources>

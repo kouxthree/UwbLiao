@@ -37,4 +37,9 @@ class SettingViewModel(application: Application) : AndroidViewModel(application)
         value = entitySetting.remoteGender
     }
     val remoteGender: LiveData<Int> = _remoteGender
+
+    private val _scanNums = MutableLiveData<Int>().apply {
+        value = entitySetting.scanNums
+    }
+    val scanNums: LiveData<Int> = _scanNums
 }

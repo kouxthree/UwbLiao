@@ -26,6 +26,8 @@ class SettingActivity : AppCompatActivity() {
         settingViewModel = ViewModelProvider(
             this, SettingViewModelFactory(application)
         )[SettingViewModel::class.java]
+        //config scan numbers
+        configScanNums()
         //read from db
         settingViewModel.mynickname.observe(this, {
             binding.txtMyNickname.setText(it)
@@ -99,6 +101,21 @@ class SettingActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         return true
     }
+    //config scan num number picker
+    private fun configScanNums() {
+        binding.scanNums.setMinValue(0)
+        binding.scanNums.setMaxValue(SCAN_NUMS_MAX)
+        //read from db
+        settingViewModel.scanNums.observe(this, {
+            binding.scanNums.value = it
+            scanRemoteNums = it
+        })
+        //write to db
+        binding.scanNums.setOnValueChangedListener { picker, oldVal, newVal ->
+            lifecycleScope.launch { storeScanNums(newVal) }
+            scanRemoteNums = newVal
+        }
+    }
 
     //write to db
     private suspend fun storeMyNickname(mynickname: String) {
@@ -112,5 +129,14 @@ class SettingActivity : AppCompatActivity() {
     private suspend fun storeRemoteGender(remotegender: Int) {
         settingViewModel.entitySetting.remoteGender = remotegender
         settingViewModel.updateCurrent(settingViewModel.entitySetting)
+    }
+    private suspend fun storeScanNums(scannums: Int) {
+        settingViewModel.entitySetting.scanNums = scannums
+        settingViewModel.updateCurrent(settingViewModel.entitySetting)
+    }
+
+    companion object {
+        private val TAG = SettingActivity::class.java.simpleName
+        var scanRemoteNums: Int = 1
     }
 }
