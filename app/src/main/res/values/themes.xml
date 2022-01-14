@@ -16,6 +16,7 @@
     <style name="Theme.Picker" parent="Theme.AppCompat.Light.NoActionBar" >
         <!-- <item name="android:textColorPrimary">@android:color/white</item> -->
         <item name="android:textSize">20sp</item>
+        <!-- <item name="android:textColorPrimary">@color/purple_500</item> -->
        <!-- <item name="colorControlNormal">@android:color/transparent</item> -->
     </style>
 </resources>
