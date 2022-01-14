@@ -136,7 +136,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="60sp"
                 android:layout_marginStart="30dp"
-                android:solidColor="#2E1E91"
+                android:background="@color/white"
                 android:theme="@style/Theme.Picker"
                 />
 
