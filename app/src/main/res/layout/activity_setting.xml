@@ -134,7 +134,7 @@
             <NumberPicker
                 android:id="@+id/scan_nums"
                 android:layout_width="wrap_content"
-                android:layout_height="60sp"
+                android:layout_height="80sp"
                 android:layout_marginStart="30dp"
                 android:theme="@style/Theme.Picker"
                 />
