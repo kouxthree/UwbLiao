@@ -72,23 +72,20 @@ class MainCanvasView(context: Context): View(context) {
         super.onTouchEvent(event)
         val x = event.x.toInt()
         val y = event.y.toInt()
-        var x1 = x - TAP_ACCURACY
-        var x2 = x + TAP_ACCURACY
-        var y1 = y - TAP_ACCURACY
-        var y2 = y + TAP_ACCURACY
-        if(x1<0) x1 = 0
-        if(y1<0) y1 = 0
-        if(x2>width) x2 = width
-        if(y2>height) y2 = height
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                var tappedI: Int? = null
+                var preD = TAP_ACCURACY
                 for(i in 0 until SettingActivity.scanRemoteNums) {
-                    if(x1<=remoteDevs[i].currentx && remoteDevs[i].currentx<=x2
-                        && y1<=remoteDevs[i].currenty && remoteDevs[i].currentx<=y2) {
-                        displayRemoteDevice(i)
-                        break
+                    val d = Utils.distanceBetweenPoints(
+                        remoteDevs[i].currentx.toInt(), remoteDevs[i].currenty.toInt(),
+                        x, y)
+                    if(d <= TAP_ACCURACY) {
+                        if(tappedI == null) tappedI = i
+                        else if(d <= preD) tappedI = i
                     }
                 }
+                if(tappedI != null) displayRemoteDevice(tappedI)
             }
             MotionEvent.ACTION_MOVE -> {
 
@@ -107,8 +104,9 @@ class MainCanvasView(context: Context): View(context) {
         dsp.setView(mBinding.root.rootView)
         val dlg = dsp.create()
         dlg.setCanceledOnTouchOutside(true)
-        mBinding.txtNickname.text = idx.toString() + ":" + remoteDevs[idx].nickname.toString()
-        mBinding.txtDistance.text = fromCoordinateToDistance(remoteDevs[idx].distance).formatDecimalPoint1() + "m"
+        (idx.toString() + ":" + remoteDevs[idx].nickname.toString()).also { mBinding.txtNickname.text = it }
+        (Utils.realDistanceFromCoordinateDistance(remoteDevs[idx].distance, myDistanceRatio())
+            .formatDecimalPoint1() + "m").also { mBinding.txtDistance.text = it }
         //cancel button
         mBinding.btnCancel.setOnClickListener {
             dlg.dismiss()
@@ -192,7 +190,8 @@ class MainCanvasView(context: Context): View(context) {
         drawMe()
     }
     private fun drawRemote(i: Int, remoteDev: EntityDevice) {
-        val paint = Paint().apply {
+        //text
+        var paint = Paint().apply {
             color = remoteColor
             isAntiAlias = true
             isDither = true
@@ -203,6 +202,18 @@ class MainCanvasView(context: Context): View(context) {
             textSize = REMOTE_TEXT_SIZE
         }
         extraCanvas.drawText(i.toString(), remoteDev.currentx, remoteDev.currenty, paint)
+        //circle
+        val r = REMOTE_RADIUS
+        paint = Paint().apply {
+            color = remoteColor
+            isAntiAlias = true
+            isDither = true
+            style = Paint.Style.FILL
+            strokeJoin = Paint.Join.ROUND
+            strokeCap = Paint.Cap.ROUND
+            strokeWidth = STROKE_WIDTH
+        }
+        extraCanvas.drawCircle(remoteDev.currentx, remoteDev.currenty, r, paint)
     }
     private fun refreshInfo() {
         extraCanvas.drawColor(backgroundColorFar)
@@ -233,18 +244,7 @@ class MainCanvasView(context: Context): View(context) {
         remoteDev.currenty = centerY + r* sin(theta).toFloat()
     }
     //utils
-    private fun fromCoordinateToDistance(c: Int?): Float {
-        var r = if(c == null) {
-            0f
-        } else {
-            c.toFloat()
-        }
-        r *= (NEAR_DISTANCE * 4f / width)
-        return r
-    }
-    fun Float?.formatDecimalPoint1(): String{
-        if(this == null) return ""
-        var fmt = "%.${1}f"
-        return fmt.format(this)
+    private fun myDistanceRatio(): Float {
+        return Utils.realDistanceRatio(MID_DISTANCE, width/2)
     }
 }
