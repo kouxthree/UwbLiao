@@ -20,12 +20,15 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class MainCanvasView(context: Context): View(context) {
+    private lateinit var dirSensor: DirSensor
     private var remoteDevs = mutableListOf<EntityDevice>()
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
         initRemoteDevs()
     }
     fun initRemoteDevs() {
+        //direction sensor
+        dirSensor = DirSensor(context)
         //remote dev init/using view width,height
         remoteDevs = mutableListOf()
         for(i in 0 until SettingActivity.scanRemoteNums) {
@@ -95,6 +98,14 @@ class MainCanvasView(context: Context): View(context) {
             }
         }
         return true
+    }
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        super.onVisibilityChanged(changedView!!, visibility)
+        when (visibility) {
+            VISIBLE -> dirSensor.resume()
+            INVISIBLE -> dirSensor.pause()
+        }
     }
     //display remote device dialog
     private fun displayRemoteDevice(idx: Int) {
@@ -190,6 +201,11 @@ class MainCanvasView(context: Context): View(context) {
         drawMe()
     }
     private fun drawRemote(i: Int, remoteDev: EntityDevice) {
+        if(dirSensor.orientAngel != null) {
+            val theta = remoteDev.theta + Math.PI/2 + dirSensor.orientAngel!!
+            remoteDev.currentx = centerX + remoteDev.distance!!*cos(theta).toFloat()
+            remoteDev.currenty = centerY + remoteDev.distance!!*sin(theta).toFloat()
+        }
         //text
         var paint = Paint().apply {
             color = remoteColor

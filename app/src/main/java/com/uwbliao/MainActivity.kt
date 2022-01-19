@@ -35,7 +35,6 @@ class MainActivity : AppCompatActivity() {
         mainCanvasView = MainCanvasView(this)
         setContentView(mainCanvasView)
     }
-
     override fun onResume() {
         super.onResume()
         //observe scanNums
