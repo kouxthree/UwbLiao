@@ -5,37 +5,34 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import kotlin.properties.Delegates
 
 class DirSensor(context: Context): SensorEventListener {
     private val AXIS_NUM = 3
     private val MATRIX_SIZE = 16
-    private var mManager: SensorManager by Delegates.notNull<SensorManager>()
-    private var mSensorAcc: Sensor by Delegates.notNull<Sensor>()
-    private var mSensorMag: Sensor by Delegates.notNull<Sensor>()
+    private var mManager: SensorManager by Delegates.notNull()
+    private var mSensorAcc: Sensor by Delegates.notNull()
+    private var mSensorMag: Sensor by Delegates.notNull()
     private var accelerometerValues = FloatArray(AXIS_NUM)
     private var magneticValues = FloatArray(AXIS_NUM)
     private var savedAcceleVal = FloatArray(AXIS_NUM)
-    var orientAngel: Float? = null
     init {
         mManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         mSensorAcc = mManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         mSensorMag = mManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
     }
     override fun onSensorChanged(event: SensorEvent?) {
-        when (event!!.sensor.getType()) {
+        when (event!!.sensor.type) {
             Sensor.TYPE_ACCELEROMETER -> {
                 accelerometerValues = event.values.clone()
                 lowPassFilter(accelerometerValues)
             }
             Sensor.TYPE_MAGNETIC_FIELD -> magneticValues = event.values.clone()
         }
-        if (accelerometerValues != null && magneticValues != null ) {
-            orientAngel = getAzimuthAngle(accelerometerValues,
-                magneticValues )
-        }
+        orientAngel = getAzimuthAngle(
+            accelerometerValues,
+            magneticValues
+        )
     }
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
     }
@@ -50,12 +47,12 @@ class DirSensor(context: Context): SensorEventListener {
     private fun lowPassFilter(target: FloatArray) {
         val FILTER_VAL = 0.8f
         val outVal = FloatArray(AXIS_NUM)
-        outVal[0] = (savedAcceleVal.get(0) * FILTER_VAL
-                + target[0] * (1 - FILTER_VAL)) as Float
-        outVal[1] = (savedAcceleVal.get(1) * FILTER_VAL
-                + target[1] * (1 - FILTER_VAL)) as Float
-        outVal[2] = (savedAcceleVal.get(2) * FILTER_VAL
-                + target[2] * (1 - FILTER_VAL)) as Float
+        outVal[0] = (savedAcceleVal[0] * FILTER_VAL
+                + target[0] * (1 - FILTER_VAL))
+        outVal[1] = (savedAcceleVal[1] * FILTER_VAL
+                + target[1] * (1 - FILTER_VAL))
+        outVal[2] = (savedAcceleVal[2] * FILTER_VAL
+                + target[2] * (1 - FILTER_VAL))
         savedAcceleVal = target.clone()//for next computation
         accelerometerValues = outVal.clone()//write
     }
@@ -85,4 +82,9 @@ class DirSensor(context: Context): SensorEventListener {
             )
         ).toInt()
     }*/
+
+    companion object {
+        private val TAG = DirSensor::class.java.simpleName
+        var orientAngel: Float = 0f
+    }
 }

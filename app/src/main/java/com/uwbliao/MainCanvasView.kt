@@ -157,12 +157,7 @@ class MainCanvasView(context: Context): View(context) {
     }
     private fun drawCompass() {
         val mymatrix = Matrix()
-        when (dirSensor.orientAngel) {
-            null -> {
-                mymatrix.postRotate(0f)
-            }
-            else -> mymatrix.postRotate(dirSensor.orientAngel!!)
-        }
+        mymatrix.postRotate(DirSensor.orientAngel)
         mymatrix.postTranslate(width-20-bitmapCompass.width.toFloat(), 20f)
         extraCanvas.drawBitmap(bitmapCompass, mymatrix, null)
     }
@@ -238,12 +233,10 @@ class MainCanvasView(context: Context): View(context) {
         drawCompass()
     }
     private fun drawRemote(i: Int, remoteDev: EntityDevice) {
-        if(dirSensor.orientAngel != null) {
-            val theta = remoteDev.theta + Math.PI/2 - dirSensor.orientAngel!!
-            remoteDev.currentx = centerX + remoteDev.distance!!*cos(theta).toFloat()
-            remoteDev.currenty = centerY + remoteDev.distance!!*sin(theta).toFloat()
-        }
-        //text
+        val theta = remoteDev.theta + Math.PI/2 - DirSensor.orientAngel
+        remoteDev.currentx = centerX + remoteDev.distance!!*cos(theta).toFloat()
+        remoteDev.currenty = centerY + remoteDev.distance!!*sin(theta).toFloat()
+         //text
         var paint = Paint().apply {
             color = remoteColor
             isAntiAlias = true
