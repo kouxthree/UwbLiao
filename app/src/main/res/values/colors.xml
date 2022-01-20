@@ -10,7 +10,8 @@
     <color name="colorBackgroundNear">#FF3700B3</color>
     <color name="colorBackgroundMid">#FF6200EE</color>
     <color name="colorBackgroundFar">#FFBB86FC</color>
+    <color name="colorBackground">#22000000</color>
     <color name="colorPaint">#FFFFFFFF</color>
-    <color name="distancePaint">#44000000</color>
+    <color name="distancePaint">#66000000</color>
     <color name="mePaint">#AA6200EE</color>
 </resources>

@@ -2,10 +2,7 @@ package com.uwbliao
 
 import android.app.AlertDialog
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
+import android.graphics.*
 import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
@@ -20,6 +17,16 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class MainCanvasView(context: Context): View(context) {
+    private lateinit var bitmapCompass: Bitmap
+    init {
+        initCompass()
+    }
+    private fun initCompass() {
+        bitmapCompass = BitmapFactory.decodeResource(resources, R.drawable.compass_needle)
+        bitmapCompass = Bitmap.createScaledBitmap(
+            bitmapCompass, bitmapCompass.width/3, bitmapCompass.height/3, true
+        )
+    }
     private lateinit var dirSensor: DirSensor
     private var remoteDevs = mutableListOf<EntityDevice>()
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
@@ -52,6 +59,7 @@ class MainCanvasView(context: Context): View(context) {
     private val backgroundColorNear = ResourcesCompat.getColor(resources, R.color.colorBackgroundNear, null)
     private val backgroundColorMid = ResourcesCompat.getColor(resources, R.color.colorBackgroundMid, null)
     private val backgroundColorFar = ResourcesCompat.getColor(resources, R.color.colorBackgroundFar, null)
+    private val backgroundColor = ResourcesCompat.getColor(resources, R.color.colorBackground, null)
     private val remoteColor = ResourcesCompat.getColor(resources, R.color.colorPaint, null)
     private var centerX = 0f
     private var centerY = 0f
@@ -62,7 +70,7 @@ class MainCanvasView(context: Context): View(context) {
         extraCanvas = Canvas(extraBitmap)
         centerX = (width/2).toFloat()
         centerY = (height/2).toFloat()
-        extraCanvas.drawColor(backgroundColorFar)
+        extraCanvas.drawColor(backgroundColor)
         redrawBackground()
         infoRefreshHandler.removeCallbacks(infoRefreshTask)
         infoRefreshHandler.post(infoRefreshTask)
@@ -78,14 +86,15 @@ class MainCanvasView(context: Context): View(context) {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 var tappedI: Int? = null
-                var preD = TAP_ACCURACY
+                var preD = TAP_ACCURACY.toDouble()
                 for(i in 0 until SettingActivity.scanRemoteNums) {
                     val d = Utils.distanceBetweenPoints(
                         remoteDevs[i].currentx.toInt(), remoteDevs[i].currenty.toInt(),
                         x, y)
-                    if(d <= TAP_ACCURACY) {
+                    if(d <= preD) {
                         if(tappedI == null) tappedI = i
                         else if(d <= preD) tappedI = i
+                        preD = d
                     }
                 }
                 if(tappedI != null) displayRemoteDevice(tappedI)
@@ -101,10 +110,9 @@ class MainCanvasView(context: Context): View(context) {
     }
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
-        super.onVisibilityChanged(changedView!!, visibility)
         when (visibility) {
             VISIBLE -> dirSensor.resume()
-            INVISIBLE -> dirSensor.pause()
+            INVISIBLE, GONE -> dirSensor.pause()
         }
     }
     //display remote device dialog
@@ -147,8 +155,35 @@ class MainCanvasView(context: Context): View(context) {
         strokeWidth = STROKE_WIDTH
         textSize = DISTANCE_TEXT_SIZE
     }
+    private fun drawCompass() {
+        val mymatrix = Matrix()
+        when (dirSensor.orientAngel) {
+            null -> {
+                mymatrix.postRotate(0f)
+            }
+            else -> mymatrix.postRotate(dirSensor.orientAngel!!)
+        }
+        mymatrix.postTranslate(width-20-bitmapCompass.width.toFloat(), 20f)
+        extraCanvas.drawBitmap(bitmapCompass, mymatrix, null)
+    }
+    private fun drawFar() {
+        val r = (width*3f)/4f
+        val paint = Paint().apply {
+            color = backgroundColorFar
+            isAntiAlias = true
+            isDither = true
+            style = Paint.Style.FILL
+            strokeJoin = Paint.Join.ROUND
+            strokeCap = Paint.Cap.ROUND
+            strokeWidth = STROKE_WIDTH
+        }
+        extraCanvas.drawCircle(centerX, centerY, r, paint)
+        //distance mark
+        val x = width/2f
+        extraCanvas.drawText(FAR_DISTANCE.toString()+"m", x, centerY-r, distancePaint)
+    }
     private fun drawMid() {
-        val r = (width)/2.toFloat()
+        val r = width/2f
         val paint = Paint().apply {
             color = backgroundColorMid
             isAntiAlias = true
@@ -160,11 +195,11 @@ class MainCanvasView(context: Context): View(context) {
         }
         extraCanvas.drawCircle(centerX, centerY, r, paint)
         //distance mark
-        val x = (width)/2.toFloat()
+        val x = width/2f
         extraCanvas.drawText(MID_DISTANCE.toString()+"m", x, centerY-r, distancePaint)
     }
     private fun drawNear() {
-        val r = (width/4).toFloat()
+        val r = width/4f
         val paint = Paint().apply {
             color = backgroundColorNear
             isAntiAlias = true
@@ -176,7 +211,7 @@ class MainCanvasView(context: Context): View(context) {
         }
         extraCanvas.drawCircle(centerX, centerY, r, paint)
         //distance mark
-        val x = (width)/2.toFloat()
+        val x = width/2f
         extraCanvas.drawText(NEAR_DISTANCE.toString()+"m", x, centerY-r, distancePaint)
     }
     private fun drawMe() {
@@ -196,13 +231,15 @@ class MainCanvasView(context: Context): View(context) {
         extraCanvas.drawText(context.getString(R.string.txt_me), centerX, centerY+5, distancePaint)
     }
     private fun redrawBackground() {
+        drawFar()
         drawMid()
         drawNear()
         drawMe()
+        drawCompass()
     }
     private fun drawRemote(i: Int, remoteDev: EntityDevice) {
         if(dirSensor.orientAngel != null) {
-            val theta = remoteDev.theta + Math.PI/2 + dirSensor.orientAngel!!
+            val theta = remoteDev.theta + Math.PI/2 - dirSensor.orientAngel!!
             remoteDev.currentx = centerX + remoteDev.distance!!*cos(theta).toFloat()
             remoteDev.currenty = centerY + remoteDev.distance!!*sin(theta).toFloat()
         }
@@ -232,7 +269,6 @@ class MainCanvasView(context: Context): View(context) {
         extraCanvas.drawCircle(remoteDev.currentx, remoteDev.currenty, r, paint)
     }
     private fun refreshInfo() {
-        extraCanvas.drawColor(backgroundColorFar)
         redrawBackground()
         for(i in 0..1) {
             if(i > remoteDevs.size-1) break
@@ -253,7 +289,7 @@ class MainCanvasView(context: Context): View(context) {
 //        val b = Random.nextFloat()
 //        val theta = (2*Math.PI)/ 2.toDouble().pow(b.toDouble())//[0,2pi)
         val theta = Math.random() * 2*Math.PI//[0,2pi) random
-        val r = UniformIntegerDistribution(20, width/2-20).sample()
+        val r = UniformIntegerDistribution(20, width*3/4-20).sample()
         remoteDev.theta = theta
         remoteDev.distance = r
         remoteDev.currentx = centerX + r* cos(theta).toFloat()
