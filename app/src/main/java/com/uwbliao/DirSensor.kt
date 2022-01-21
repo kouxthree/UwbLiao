@@ -1,11 +1,18 @@
 package com.uwbliao
 
+import android.R.attr
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import kotlin.properties.Delegates
+import android.R.attr.gravity
+
+
+
 
 class DirSensor(context: Context): SensorEventListener {
     private val AXIS_NUM = 3
@@ -16,6 +23,8 @@ class DirSensor(context: Context): SensorEventListener {
     private var accelerometerValues = FloatArray(AXIS_NUM)
     private var magneticValues = FloatArray(AXIS_NUM)
     private var savedAcceleVal = FloatArray(AXIS_NUM)
+//    private var _orientAngel = MutableLiveData<Float>().apply { value = 0f }
+//    var orientAngel: LiveData<Float> = _orientAngel
     init {
         mManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         mSensorAcc = mManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
@@ -29,6 +38,10 @@ class DirSensor(context: Context): SensorEventListener {
             }
             Sensor.TYPE_MAGNETIC_FIELD -> magneticValues = event.values.clone()
         }
+//        _orientAngel.apply { value = getAzimuthAngle(
+//            accelerometerValues,
+//            magneticValues
+//        )}
         orientAngel = getAzimuthAngle(
             accelerometerValues,
             magneticValues
@@ -74,17 +87,8 @@ class DirSensor(context: Context): SensorEventListener {
         //return toOrientationDegrees(orientationValues[0])
         return orientationValues[0]
     }
-    /*
-    private fun toOrientationDegrees(angle: Float): Int {
-        return Math.floor(
-            if (angle >= 0) Math.toDegrees(angle.toDouble()) else 360 + Math.toDegrees(
-                angle.toDouble()
-            )
-        ).toInt()
-    }*/
-
     companion object {
         private val TAG = DirSensor::class.java.simpleName
-        var orientAngel: Float = 0f
+        var orientAngel = 0f
     }
 }

@@ -10,13 +10,16 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import androidx.core.content.res.ResourcesCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
 import com.uwbliao.databinding.RemoteDevDspBinding
 import com.uwbliao.db.EntityDevice
 import org.apache.commons.math3.distribution.UniformIntegerDistribution
 import kotlin.math.cos
 import kotlin.math.sin
 
-class MainCanvasView(context: Context): View(context) {
+open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     private lateinit var bitmapCompass: Bitmap
     init {
         initCompass()
@@ -32,6 +35,10 @@ class MainCanvasView(context: Context): View(context) {
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
         initRemoteDevs()
+//        //compass drawing observer
+//        dirSensor.orientAngel.observe(this , {
+//            drawCompass()
+//        })
     }
     fun initRemoteDevs() {
         //direction sensor
@@ -45,6 +52,25 @@ class MainCanvasView(context: Context): View(context) {
         }
         if(remoteDevs.size > 0) remoteDevs[0].nickname = "西施"
         if(remoteDevs.size > 2) remoteDevs[2].nickname = "貂蝉"
+    }
+    private val lifecycleRegistry = LifecycleRegistry(this)
+    override fun getLifecycle() = lifecycleRegistry
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        lifecycleRegistry.currentState = Lifecycle.State.RESUMED
+    }
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+    }
+    private fun drawCompass() {
+        val mymatrix = Matrix()
+//        mymatrix.postRotate(dirSensor.orientAngel.value!!)
+//        mymatrix.postRotate(DirSensor.orientAngel * 57.2957795f)
+        mymatrix.setRotate(DirSensor.orientAngel * 360f / Math.PI.toFloat(),
+            bitmapCompass.width.toFloat()/2, bitmapCompass.height.toFloat()/2)
+        mymatrix.postTranslate(width-20-bitmapCompass.width.toFloat(), 20f)
+        extraCanvas.drawBitmap(bitmapCompass, mymatrix, null)
     }
     private var infoRefreshHandler: Handler = Handler(Looper.getMainLooper())//for info refreshing
     private var infoRefreshTask = object : Runnable {
@@ -70,7 +96,7 @@ class MainCanvasView(context: Context): View(context) {
         extraCanvas = Canvas(extraBitmap)
         centerX = (width/2).toFloat()
         centerY = (height/2).toFloat()
-        extraCanvas.drawColor(backgroundColor)
+        //alpha = 0f//transparent for background redraw
         redrawBackground()
         infoRefreshHandler.removeCallbacks(infoRefreshTask)
         infoRefreshHandler.post(infoRefreshTask)
@@ -155,12 +181,6 @@ class MainCanvasView(context: Context): View(context) {
         strokeWidth = STROKE_WIDTH
         textSize = DISTANCE_TEXT_SIZE
     }
-    private fun drawCompass() {
-        val mymatrix = Matrix()
-        mymatrix.postRotate(DirSensor.orientAngel)
-        mymatrix.postTranslate(width-20-bitmapCompass.width.toFloat(), 20f)
-        extraCanvas.drawBitmap(bitmapCompass, mymatrix, null)
-    }
     private fun drawFar() {
         val r = (width*3f)/4f
         val paint = Paint().apply {
@@ -226,6 +246,8 @@ class MainCanvasView(context: Context): View(context) {
         extraCanvas.drawText(context.getString(R.string.txt_me), centerX, centerY+5, distancePaint)
     }
     private fun redrawBackground() {
+        extraCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+        extraCanvas.drawColor(backgroundColor)
         drawFar()
         drawMid()
         drawNear()
@@ -233,6 +255,7 @@ class MainCanvasView(context: Context): View(context) {
         drawCompass()
     }
     private fun drawRemote(i: Int, remoteDev: EntityDevice) {
+//        val theta = remoteDev.theta + Math.PI/2 - dirSensor.orientAngel.value!!
         val theta = remoteDev.theta + Math.PI/2 - DirSensor.orientAngel
         remoteDev.currentx = centerX + remoteDev.distance!!*cos(theta).toFloat()
         remoteDev.currenty = centerY + remoteDev.distance!!*sin(theta).toFloat()
