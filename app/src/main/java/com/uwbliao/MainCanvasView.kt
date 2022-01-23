@@ -85,8 +85,8 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             textSize = REMOTE_TEXT_SIZE
         }
         extraCanvas.drawBitmap(bitmapCompass, mymatrix, null)
-        extraCanvas.drawText(DirSensor.orientAngel.toString(), 20f, 20f, paint)
-        extraCanvas.drawText(degree.toString(), 20f, 50f, paint)
+        extraCanvas.drawText(DirSensor.orientAngel.toString(), 30f, 40f, paint)
+        extraCanvas.drawText(degree.toString(), 30f, 80f, paint)
     }
     private var infoRefreshHandler: Handler = Handler(Looper.getMainLooper())//for info refreshing
     private var infoRefreshTask = object : Runnable {
