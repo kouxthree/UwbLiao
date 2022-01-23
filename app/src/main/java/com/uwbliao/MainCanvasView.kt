@@ -74,6 +74,8 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             bitmapCompass.width.toFloat()/2, bitmapCompass.height.toFloat()/2)
         mymatrix.postTranslate(width-20-bitmapCompass.width.toFloat(), 20f)
         extraCanvas.drawBitmap(bitmapCompass, mymatrix, null)
+        extraCanvas.drawText(DirSensor.orientAngel.toString(), 20f, 20f, distancePaint)
+        extraCanvas.drawText(degree.toString(), 20f, 50f, distancePaint)
     }
     private var infoRefreshHandler: Handler = Handler(Looper.getMainLooper())//for info refreshing
     private var infoRefreshTask = object : Runnable {
