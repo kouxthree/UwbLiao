@@ -70,7 +70,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         val degree = Math.toDegrees(DirSensor.orientAngel.toDouble())
 //        mymatrix.setRotate(DirSensor.orientAngel * 360f / Math.PI.toFloat(),
 //            bitmapCompass.width.toFloat()/2, bitmapCompass.height.toFloat()/2)
-        mymatrix.setRotate(degree.toFloat(),
+        mymatrix.setRotate(-degree.toFloat(),
             bitmapCompass.width.toFloat()/2, bitmapCompass.height.toFloat()/2)
         mymatrix.postTranslate(width-20-bitmapCompass.width.toFloat(), 20f)
         //degree
