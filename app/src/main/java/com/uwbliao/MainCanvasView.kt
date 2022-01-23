@@ -73,9 +73,20 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         mymatrix.setRotate(degree.toFloat(),
             bitmapCompass.width.toFloat()/2, bitmapCompass.height.toFloat()/2)
         mymatrix.postTranslate(width-20-bitmapCompass.width.toFloat(), 20f)
+        //degree
+        var paint = Paint().apply {
+            color = remoteColor
+            isAntiAlias = true
+            isDither = true
+            style = Paint.Style.FILL
+            strokeJoin = Paint.Join.ROUND
+            strokeCap = Paint.Cap.ROUND
+            strokeWidth = STROKE_WIDTH
+            textSize = REMOTE_TEXT_SIZE
+        }
         extraCanvas.drawBitmap(bitmapCompass, mymatrix, null)
-        extraCanvas.drawText(DirSensor.orientAngel.toString(), 20f, 20f, distancePaint)
-        extraCanvas.drawText(degree.toString(), 20f, 50f, distancePaint)
+        extraCanvas.drawText(DirSensor.orientAngel.toString(), 20f, 20f, paint)
+        extraCanvas.drawText(degree.toString(), 20f, 50f, paint)
     }
     private var infoRefreshHandler: Handler = Handler(Looper.getMainLooper())//for info refreshing
     private var infoRefreshTask = object : Runnable {
