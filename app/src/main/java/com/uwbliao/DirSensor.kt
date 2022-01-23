@@ -1,51 +1,57 @@
 package com.uwbliao
 
-import android.R.attr
 import android.content.Context
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import kotlin.properties.Delegates
-import android.R.attr.gravity
-
-
-
 
 class DirSensor(context: Context): SensorEventListener {
     private val AXIS_NUM = 3
     private val MATRIX_SIZE = 16
     private var mManager: SensorManager by Delegates.notNull()
+    private var haveGravity = false
+    private var haveRotationVectorSensor = false
+    private var mRotationVectorSensor: Sensor by Delegates.notNull()
+    private var mSensorGravity: Sensor by Delegates.notNull()
     private var mSensorAcc: Sensor by Delegates.notNull()
     private var mSensorMag: Sensor by Delegates.notNull()
-    private var accelerometerValues = FloatArray(AXIS_NUM)
+    private var rotationVectorValues = FloatArray(AXIS_NUM)
+    private var gValues = FloatArray(AXIS_NUM)
     private var magneticValues = FloatArray(AXIS_NUM)
     private var savedAcceleVal = FloatArray(AXIS_NUM)
 //    private var _orientAngel = MutableLiveData<Float>().apply { value = 0f }
 //    var orientAngel: LiveData<Float> = _orientAngel
     init {
         mManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        mRotationVectorSensor = mManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        mSensorGravity = mManager.getDefaultSensor( Sensor.TYPE_GRAVITY );
         mSensorAcc = mManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         mSensorMag = mManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
     }
     override fun onSensorChanged(event: SensorEvent?) {
-        when (event!!.sensor.type) {
-            Sensor.TYPE_ACCELEROMETER -> {
-                accelerometerValues = event.values.clone()
-                lowPassFilter(accelerometerValues)
+        if(haveRotationVectorSensor && event!!.sensor.type == Sensor.TYPE_ROTATION_VECTOR) {
+            rotationVectorValues = event.values.clone()
+            orientAngel = getAzimuthAngle(rotationVectorValues)
+        } else {
+            when (event!!.sensor.type) {
+                Sensor.TYPE_GRAVITY -> gValues = event.values.clone()
+                Sensor.TYPE_ACCELEROMETER -> {
+                    gValues = event.values.clone()
+                    lowPassFilter(gValues)
+                }
+                Sensor.TYPE_MAGNETIC_FIELD -> magneticValues = event.values.clone()
             }
-            Sensor.TYPE_MAGNETIC_FIELD -> magneticValues = event.values.clone()
+            // _orientAngel.apply { value = getAzimuthAngle(
+            // accelerometerValues,
+            // magneticValues
+            // )}
+            orientAngel = getAzimuthAngle(
+                gValues,
+                magneticValues
+            )
         }
-//        _orientAngel.apply { value = getAzimuthAngle(
-//            accelerometerValues,
-//            magneticValues
-//        )}
-        orientAngel = getAzimuthAngle(
-            accelerometerValues,
-            magneticValues
-        )
     }
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
     }
@@ -53,10 +59,32 @@ class DirSensor(context: Context): SensorEventListener {
         mManager.unregisterListener(this)
     }
     fun resume() {
-        mManager.registerListener(this, mSensorAcc, SensorManager.SENSOR_DELAY_UI)
-        mManager.registerListener(this, mSensorMag, SensorManager.SENSOR_DELAY_UI)
+        //use RotationVectorSensor if available
+        haveRotationVectorSensor = mManager.registerListener(this, mRotationVectorSensor, 10000);
+        if(!haveRotationVectorSensor) {
+            haveGravity =
+                mManager.registerListener(this, mSensorGravity, SensorManager.SENSOR_DELAY_GAME);
+            if (!haveGravity) mManager.registerListener(
+                this,
+                mSensorAcc,
+                SensorManager.SENSOR_DELAY_UI
+            )
+            mManager.registerListener(this, mSensorMag, SensorManager.SENSOR_DELAY_UI)
+        }
     }
 
+    //use rotate vector sensor when available
+    private fun getAzimuthAngle(rValues: FloatArray): Float {
+        val rotationMatrix = FloatArray(MATRIX_SIZE)
+        val orientationValues = FloatArray(AXIS_NUM)
+        // calculate th rotation matrix
+        SensorManager.getRotationMatrixFromVector( rotationMatrix, rValues)
+        // get the azimuth value (orientation[0])
+        //mAzimuth = (int) ( Math.toDegrees( SensorManager.getOrientation( rMat, orientation )[0] ) + 360 ) % 360;
+        SensorManager.getOrientation( rotationMatrix, orientationValues )
+        return orientationValues[0]
+    }
+    //when gravity sensor is available, acceleration sensor is not needed
     private fun lowPassFilter(target: FloatArray) {
         val FILTER_VAL = 0.8f
         val outVal = FloatArray(AXIS_NUM)
@@ -67,9 +95,9 @@ class DirSensor(context: Context): SensorEventListener {
         outVal[2] = (savedAcceleVal[2] * FILTER_VAL
                 + target[2] * (1 - FILTER_VAL))
         savedAcceleVal = target.clone()//for next computation
-        accelerometerValues = outVal.clone()//write
+        gValues = outVal.clone()//write
     }
-    private fun getAzimuthAngle(accValues: FloatArray, magValues: FloatArray): Float {
+    private fun getAzimuthAngle(gValues: FloatArray, magValues: FloatArray): Float {
         val rotationMatrix = FloatArray(MATRIX_SIZE)
         val inclinationMatrix = FloatArray(MATRIX_SIZE)
         val remappedMatrix = FloatArray(MATRIX_SIZE)
@@ -77,7 +105,7 @@ class DirSensor(context: Context): SensorEventListener {
 
         SensorManager.getRotationMatrix(
             rotationMatrix,
-            inclinationMatrix, accValues, magValues
+            inclinationMatrix, gValues, magValues
         )
         SensorManager.remapCoordinateSystem(
             rotationMatrix,
@@ -87,6 +115,7 @@ class DirSensor(context: Context): SensorEventListener {
         //return toOrientationDegrees(orientationValues[0])
         return orientationValues[0]
     }
+
     companion object {
         private val TAG = DirSensor::class.java.simpleName
         var orientAngel = 0f
