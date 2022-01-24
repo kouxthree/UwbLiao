@@ -13,5 +13,8 @@
     <color name="colorBackground">#22000000</color>
     <color name="colorPaint">#FFFFFFFF</color>
     <color name="distancePaint">#66000000</color>
+    <color name="remotePaint">#FFFFFFFF</color>
+    <color name="remoteInterestedPaint">#FF00FF00</color>
+    <color name="remoteVeryInterestedPaint">#5500FF00</color>
     <color name="mePaint">#AA6200EE</color>
 </resources>

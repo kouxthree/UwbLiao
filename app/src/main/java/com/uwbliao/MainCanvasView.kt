@@ -15,6 +15,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import com.uwbliao.databinding.RemoteDevDspBinding
 import com.uwbliao.db.EntityDevice
+import com.uwbliao.db.Interest
 import org.apache.commons.math3.distribution.UniformIntegerDistribution
 import kotlin.math.cos
 import kotlin.math.sin
@@ -74,7 +75,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             bitmapCompass.width.toFloat()/2, bitmapCompass.height.toFloat()/2)
         mymatrix.postTranslate(width-20-bitmapCompass.width.toFloat(), 20f)
         //degree
-        var paint = Paint().apply {
+        val paint = Paint().apply {
             color = remoteColor
             isAntiAlias = true
             isDither = true
@@ -102,7 +103,9 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     private val backgroundColorMid = ResourcesCompat.getColor(resources, R.color.colorBackgroundMid, null)
     private val backgroundColorFar = ResourcesCompat.getColor(resources, R.color.colorBackgroundFar, null)
     private val backgroundColor = ResourcesCompat.getColor(resources, R.color.colorBackground, null)
-    private val remoteColor = ResourcesCompat.getColor(resources, R.color.colorPaint, null)
+    private val remoteColor = ResourcesCompat.getColor(resources, R.color.remotePaint, null)
+    private val remoteInterestedColor = ResourcesCompat.getColor(resources, R.color.remoteInterestedPaint, null)
+    private val remoteVeryInterestedColor = ResourcesCompat.getColor(resources, R.color.remoteVeryInterestedPaint, null)
     private var centerX = 0f
     private var centerY = 0f
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -162,12 +165,18 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         val dsp = AlertDialog.Builder(context)
         //LayoutInflater.from(context).inflate(R.layout.remote_dev_dsp, null, false)
         val mBinding = RemoteDevDspBinding.inflate(LayoutInflater.from(context))
+        val mDrawableInterest =
         dsp.setView(mBinding.root.rootView)
         val dlg = dsp.create()
         dlg.setCanceledOnTouchOutside(true)
         (idx.toString() + ":" + remoteDevs[idx].nickname.toString()).also { mBinding.txtNickname.text = it }
         (Utils.realDistanceFromCoordinateDistance(remoteDevs[idx].distance, myDistanceRatio())
             .formatDecimalPoint1() + "m").also { mBinding.txtDistance.text = it }
+        when(remoteDevs[idx].interest) {
+            Interest.INTERESTED -> {
+                mBinding.imgInterest.setImageResource(R.drawable.ic_favorite)
+            }
+        }
         //cancel button
         mBinding.btnCancel.setOnClickListener {
             dlg.dismiss()
@@ -184,6 +193,19 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
                 handled = true
             }
             handled
+        }
+        //favorite icon
+        mBinding.imgInterest.setOnClickListener {
+            when(remoteDevs[idx].interest) {
+                Interest.INTERESTED -> {
+                    mBinding.imgInterest.setImageResource(R.drawable.ic_favorite_border)
+                    remoteDevs[idx].interest = Interest.NONE
+                }
+                else -> {
+                    mBinding.imgInterest.setImageResource(R.drawable.ic_favorite)
+                    remoteDevs[idx].interest = Interest.INTERESTED
+                }
+            }
         }
         dlg.show()
     }
@@ -290,7 +312,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         //circle
         val r = REMOTE_RADIUS
         paint = Paint().apply {
-            color = remoteColor
+            color = getRemoteColor(remoteDev.interest)
             isAntiAlias = true
             isDither = true
             style = Paint.Style.FILL
@@ -330,5 +352,12 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     //utils
     private fun myDistanceRatio(): Float {
         return Utils.realDistanceRatio(MID_DISTANCE, width/2)
+    }
+    private fun getRemoteColor(interest: Int): Int {
+        return when(interest) {
+            Interest.INTERESTED -> remoteInterestedColor
+            Interest.VERY_INTERESTED -> remoteVeryInterestedColor
+            else -> remoteColor
+        }
     }
 }

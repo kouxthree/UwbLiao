@@ -29,8 +29,14 @@
         android:maxLength="8"
         android:selectAllOnFocus="true"
         android:imeOptions="actionSend"
-        android:textSize="20sp"
-        android:autofillHints="" />
+        android:textSize="20sp" />
+
+    <ImageView
+        android:id="@+id/img_interest"
+        android:src="@drawable/ic_favorite_border"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        />
 
     <LinearLayout
         android:layout_width="match_parent"
