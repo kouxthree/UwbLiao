@@ -7,8 +7,8 @@ import androidx.room.PrimaryKey
 @Entity
 data class EntityDevice(
     @PrimaryKey var deviceName: String = "",
-    @ColumnInfo(name = "mac") val mac: String? = null,
-    @ColumnInfo(name = "type") val type: Int = 0,//0:I scanned  1:connected to me
+    @ColumnInfo(name = "mac") var mac: String? = null,
+    @ColumnInfo(name = "type") var type: Int = 0,//0:I scanned  1:connected to me
     @ColumnInfo(name = "interest") var interest: Int = Interest.NONE,
     @ColumnInfo(name = "display") var display: Boolean? = true,//true:display false:non display
     @ColumnInfo(name = "nickname") var nickname: String? = null,

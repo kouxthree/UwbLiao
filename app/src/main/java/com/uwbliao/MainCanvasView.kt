@@ -13,9 +13,12 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.lifecycleScope
 import com.uwbliao.databinding.RemoteDevDspBinding
 import com.uwbliao.db.EntityDevice
 import com.uwbliao.db.Interest
+import com.uwbliao.db.RepDevice
+import kotlinx.coroutines.launch
 import org.apache.commons.math3.distribution.UniformIntegerDistribution
 import kotlin.math.cos
 import kotlin.math.sin
@@ -47,9 +50,11 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         //remote dev init/using view width,height
         remoteDevs = mutableListOf()
         for(i in 0 until SettingActivity.scanRemoteNums) {
-            val dev = EntityDevice()
-            remoteDevs.add(dev)
-            dev.deviceName = i.toString()
+            val repdev = RepDevice(i.toString())
+            lifecycleScope.launch {
+                val dev = repdev.entityDevice!!
+                remoteDevs.add(dev)
+            }
         }
         if(remoteDevs.size > 0) remoteDevs[0].nickname = "西施"
         if(remoteDevs.size > 2) remoteDevs[2].nickname = "貂蝉"
@@ -165,7 +170,6 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         val dsp = AlertDialog.Builder(context)
         //LayoutInflater.from(context).inflate(R.layout.remote_dev_dsp, null, false)
         val mBinding = RemoteDevDspBinding.inflate(LayoutInflater.from(context))
-        val mDrawableInterest =
         dsp.setView(mBinding.root.rootView)
         val dlg = dsp.create()
         dlg.setCanceledOnTouchOutside(true)
@@ -206,6 +210,9 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
                     remoteDevs[idx].interest = Interest.INTERESTED
                 }
             }
+            //save to db
+            val repdev = RepDevice(remoteDevs[idx].deviceName)
+            lifecycleScope.launch { repdev.updateDevice(remoteDevs[idx]) }
         }
         dlg.show()
     }
