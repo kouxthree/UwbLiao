@@ -9,6 +9,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -23,6 +24,13 @@ import org.apache.commons.math3.distribution.UniformIntegerDistribution
 import kotlin.math.cos
 import kotlin.math.sin
 
+class DispMode {
+    companion object {
+        const val DEFAULT = 0
+        const val WIDE = 1
+        const val NARROW = 2
+    }
+}
 open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     private lateinit var bitmapCompass: Bitmap
     init {
@@ -35,6 +43,8 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         )
     }
     private lateinit var dirSensor: DirSensor
+    private var mDispMode = DispMode.DEFAULT
+    private var mDispModePrev = DispMode.WIDE
     private var remoteDevs = mutableListOf<EntityDevice>()
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
@@ -47,7 +57,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     fun initRemoteDevs() {
         //direction sensor
         dirSensor = DirSensor(context)
-        //remote dev init/using view width,height
+        //remote dev init
         remoteDevs = mutableListOf()
         for(i in 0 until SettingActivity.scanRemoteNums) {
             val repdev = RepDevice(i.toString())
@@ -93,6 +103,11 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         extraCanvas.drawBitmap(bitmapCompass, mymatrix, null)
         extraCanvas.drawText(DirSensor.orientAngel.toString(), 30f, 40f, paint)
         extraCanvas.drawText(degree.toString(), 30f, 80f, paint)
+    }
+    private fun drawAdjust() {
+        val d = AppCompatResources.getDrawable(context, R.drawable.ic_adjust)
+        d!!.setBounds(20, height-100, 100, height-20)
+        d.draw(extraCanvas)
     }
     private var infoRefreshHandler: Handler = Handler(Looper.getMainLooper())//for info refreshing
     private var infoRefreshTask = object : Runnable {
@@ -148,6 +163,11 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
                     }
                 }
                 if(tappedI != null) displayRemoteDevice(tappedI)
+                //zoom in zoom out
+                else if(x in 20..100 && y in height-100 .. height-20) {
+                    changeDispMode()
+                    refreshInfo()
+                }
             }
             MotionEvent.ACTION_MOVE -> {
 
@@ -227,7 +247,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         textSize = DISTANCE_TEXT_SIZE
     }
     private fun drawFar() {
-        val r = (width*3f)/4f
+        val r = (getHorizontalRadius()*3f)/2f//(width*3f)/4f
         val paint = Paint().apply {
             color = backgroundColorFar
             isAntiAlias = true
@@ -243,7 +263,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         extraCanvas.drawText(FAR_DISTANCE.toString()+"m", x, centerY-r, distancePaint)
     }
     private fun drawMid() {
-        val r = width/2f
+        val r = getHorizontalRadius()//width/2f
         val paint = Paint().apply {
             color = backgroundColorMid
             isAntiAlias = true
@@ -253,13 +273,13 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             strokeCap = Paint.Cap.ROUND
             strokeWidth = STROKE_WIDTH
         }
-        extraCanvas.drawCircle(centerX, centerY, r, paint)
+        extraCanvas.drawCircle(centerX, centerY, r.toFloat(), paint)
         //distance mark
         val x = width/2f
         extraCanvas.drawText(MID_DISTANCE.toString()+"m", x, centerY-r, distancePaint)
     }
     private fun drawNear() {
-        val r = width/4f
+        val r = getHorizontalRadius()/2f//width/4f
         val paint = Paint().apply {
             color = backgroundColorNear
             isAntiAlias = true
@@ -291,6 +311,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         extraCanvas.drawText(context.getString(R.string.txt_me), centerX, centerY+5, distancePaint)
     }
     private fun redrawBackground() {
+        if(width == 0) return//wait until layout init complete
         extraCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
         extraCanvas.drawColor(backgroundColor)
         drawFar()
@@ -298,12 +319,16 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         drawNear()
         drawMe()
         drawCompass()
+        drawAdjust()
     }
     private fun drawRemote(i: Int, remoteDev: EntityDevice) {
 //        val theta = remoteDev.theta + Math.PI/2 - dirSensor.orientAngel.value!!
         val theta = remoteDev.theta + Math.PI/2 - DirSensor.orientAngel
-        remoteDev.currentx = centerX + remoteDev.distance!!*cos(theta).toFloat()
-        remoteDev.currenty = centerY + remoteDev.distance!!*sin(theta).toFloat()
+        val drawdistance = remoteDev.distance!!*(getHorizontalRadius()*2/width)
+//        remoteDev.currentx = centerX + remoteDev.distance!!*cos(theta).toFloat()
+//        remoteDev.currenty = centerY + remoteDev.distance!!*sin(theta).toFloat()
+        remoteDev.currentx = centerX + drawdistance*cos(theta).toFloat()
+        remoteDev.currenty = centerY + drawdistance*sin(theta).toFloat()
          //text
         var paint = Paint().apply {
             color = remoteColor
@@ -353,18 +378,38 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         val r = UniformIntegerDistribution(20, width*3/4-20).sample()
         remoteDev.theta = theta
         remoteDev.distance = r
-        remoteDev.currentx = centerX + r* cos(theta).toFloat()
-        remoteDev.currenty = centerY + r* sin(theta).toFloat()
+//        remoteDev.currentx = centerX + r* cos(theta).toFloat()
+//        remoteDev.currenty = centerY + r* sin(theta).toFloat()
     }
     //utils
     private fun myDistanceRatio(): Float {
-        return Utils.realDistanceRatio(MID_DISTANCE, width/2)
+        return Utils.realDistanceRatio(MID_DISTANCE, getHorizontalRadius().toInt())
     }
     private fun getRemoteColor(interest: Int): Int {
         return when(interest) {
             Interest.INTERESTED -> remoteInterestedColor
             Interest.VERY_INTERESTED -> remoteVeryInterestedColor
             else -> remoteColor
+        }
+    }
+    private fun getHorizontalRadius(): Float {
+        return (when(mDispMode) {
+            DispMode.WIDE -> width*3f/8
+            DispMode.NARROW -> width*3f/4
+            else -> width/2f
+        })
+    }
+    private fun changeDispMode() {
+        //wide -> default -> narrow
+        if(mDispMode == DispMode.WIDE || mDispMode == DispMode.NARROW) {
+            mDispModePrev = mDispMode
+            mDispMode = DispMode.DEFAULT
+        } else if(mDispModePrev == DispMode.WIDE) {
+            mDispModePrev = mDispMode
+            mDispMode = DispMode.NARROW
+        } else {
+            mDispModePrev = mDispMode
+            mDispMode = DispMode.WIDE
         }
     }
 }

@@ -14,8 +14,8 @@ data class EntityDevice(
     @ColumnInfo(name = "nickname") var nickname: String? = null,
     @ColumnInfo(name = "distance") var distance: Int? = null,//meter
     @ColumnInfo(name = "theta") var theta: Double = 0.toDouble(),//angle
-    @ColumnInfo(name = "currentx") var currentx: Float = 0f,
-    @ColumnInfo(name = "currenty") var currenty: Float = 0f,
+    var currentx: Float = 0f,
+    var currenty: Float = 0f,
 )
 
 class Interest {
