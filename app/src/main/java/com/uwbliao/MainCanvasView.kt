@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import androidx.appcompat.content.res.AppCompatResources
@@ -44,7 +45,6 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     }
     private lateinit var dirSensor: DirSensor
     private var mDispMode = DispMode.DEFAULT
-    private var mDispModePrev = DispMode.WIDE
     private var remoteDevs = mutableListOf<EntityDevice>()
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
@@ -105,9 +105,12 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         extraCanvas.drawText(degree.toString(), 30f, 80f, paint)
     }
     private fun drawAdjust() {
-        val d = AppCompatResources.getDrawable(context, R.drawable.ic_adjust)
-        d!!.setBounds(20, height-100, 100, height-20)
-        d.draw(extraCanvas)
+        val dplus = AppCompatResources.getDrawable(context, R.drawable.ic_adjust_plus)
+        dplus!!.setBounds(20, height-100, 100, height-20)
+        dplus.draw(extraCanvas)
+        val dminus = AppCompatResources.getDrawable(context, R.drawable.ic_adjust_minus)
+        dminus!!.setBounds(120, height-100, 200, height-20)
+        dminus.draw(extraCanvas)
     }
     private var infoRefreshHandler: Handler = Handler(Looper.getMainLooper())//for info refreshing
     private var infoRefreshTask = object : Runnable {
@@ -165,8 +168,21 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
                 if(tappedI != null) displayRemoteDevice(tappedI)
                 //zoom in zoom out
                 else if(x in 20..100 && y in height-100 .. height-20) {
-                    changeDispMode()
-                    refreshInfo()
+                    changeDispMode(-1f)
+//                    refreshInfo()
+                    redrawBackground()
+                } else if(x in 120..200 && y in height-100 .. height-20) {
+                    changeDispMode(1f)
+//                    refreshInfo()
+                    redrawBackground()
+                } else {
+                    //pinch listener
+                    val pinchListener = PinchListener(context, extraBitmap, extraCanvas)
+                    // Create the new scale gesture detector object use above pinch zoom gesture listener.
+                    val scaleGestureDetector = ScaleGestureDetector(context, pinchListener)
+                    //other event
+                    //dispatch touch event to scale gesture
+                    scaleGestureDetector.onTouchEvent(event)
                 }
             }
             MotionEvent.ACTION_MOVE -> {
@@ -273,7 +289,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             strokeCap = Paint.Cap.ROUND
             strokeWidth = STROKE_WIDTH
         }
-        extraCanvas.drawCircle(centerX, centerY, r.toFloat(), paint)
+        extraCanvas.drawCircle(centerX, centerY, r, paint)
         //distance mark
         val x = width/2f
         extraCanvas.drawText(MID_DISTANCE.toString()+"m", x, centerY-r, distancePaint)
@@ -399,17 +415,13 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             else -> width/2f
         })
     }
-    private fun changeDispMode() {
-        //wide -> default -> narrow
-        if(mDispMode == DispMode.WIDE || mDispMode == DispMode.NARROW) {
-            mDispModePrev = mDispMode
-            mDispMode = DispMode.DEFAULT
-        } else if(mDispModePrev == DispMode.WIDE) {
-            mDispModePrev = mDispMode
-            mDispMode = DispMode.NARROW
-        } else {
-            mDispModePrev = mDispMode
-            mDispMode = DispMode.WIDE
+    private fun changeDispMode(scale: Float) {
+        if(scale > 0) {
+            if(mDispMode == DispMode.NARROW) mDispMode = DispMode.DEFAULT
+            else if(mDispMode == DispMode.DEFAULT) mDispMode = DispMode.WIDE
+        } else if(scale < 0) {
+            if(mDispMode == DispMode.WIDE) mDispMode = DispMode.DEFAULT
+            else if(mDispMode == DispMode.DEFAULT) mDispMode = DispMode.NARROW
         }
     }
 }
