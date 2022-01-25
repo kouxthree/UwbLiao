@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.*
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -131,6 +132,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     private val remoteVeryInterestedColor = ResourcesCompat.getColor(resources, R.color.remoteVeryInterestedPaint, null)
     private var centerX = 0f
     private var centerY = 0f
+    private lateinit var scaleGestureDetector: ScaleGestureDetector
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if(::extraBitmap.isInitialized) extraBitmap.recycle()
@@ -142,6 +144,9 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         redrawBackground()
         infoRefreshHandler.removeCallbacks(infoRefreshTask)
         infoRefreshHandler.post(infoRefreshTask)
+
+        // Create the new scale gesture detector object use above pinch zoom gesture listener.
+        scaleGestureDetector = ScaleGestureDetector(context, pinchListener)
     }
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
@@ -171,18 +176,12 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
                     changeDispMode(-1f)
 //                    refreshInfo()
                     redrawBackground()
+                    return true
                 } else if(x in 120..200 && y in height-100 .. height-20) {
                     changeDispMode(1f)
 //                    refreshInfo()
                     redrawBackground()
-                } else {
-                    //pinch listener
-                    val pinchListener = PinchListener(context, extraBitmap, extraCanvas)
-                    // Create the new scale gesture detector object use above pinch zoom gesture listener.
-                    val scaleGestureDetector = ScaleGestureDetector(context, pinchListener)
-                    //other event
-                    //dispatch touch event to scale gesture
-                    scaleGestureDetector.onTouchEvent(event)
+                    return true
                 }
             }
             MotionEvent.ACTION_MOVE -> {
@@ -192,7 +191,41 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
 
             }
         }
+
+        //other event
+        //dispatch touch event to scale gesture
+        scaleGestureDetector.onTouchEvent(event)
         return true
+    }
+    private val pinchListener = object: ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
+            //stop view redraw
+            infoRefreshHandler.removeCallbacks(infoRefreshTask)
+            return true
+        }
+        // When pinch zoom gesture occurred.
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            //Toast.makeText(context, "on scale", Toast.LENGTH_SHORT).show()
+            val scaleFactor = detector.scaleFactor
+            scaleImage(scaleFactor, scaleFactor)
+            Log.e(TAG, "hello world:"+scaleFactor.toString())
+            return true
+        }
+        override fun onScaleEnd(detector: ScaleGestureDetector?) {
+            //restart view redraw
+            infoRefreshHandler.post(infoRefreshTask)
+        }
+        //scale the image
+        private fun scaleImage(xScale: Float, yScale: Float) {
+            val scaleMatrix = Matrix()
+            // Set x y scale value.
+            scaleMatrix.setScale(xScale, yScale)
+            changeDispMode(2-xScale-yScale)
+            // Create a new paint object.
+            val paint = Paint()
+            extraCanvas.drawBitmap(extraBitmap, scaleMatrix, paint)
+            invalidate()//redraw immediately
+        }
     }
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
@@ -423,5 +456,9 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             if(mDispMode == DispMode.WIDE) mDispMode = DispMode.DEFAULT
             else if(mDispMode == DispMode.DEFAULT) mDispMode = DispMode.NARROW
         }
+    }
+
+    companion object {
+        private val TAG = MainCanvasView::class.java.simpleName
     }
 }
