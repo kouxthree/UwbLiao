@@ -479,7 +479,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     }
     //utils
     private fun myDistanceRatio(): Float {
-        return Utils.realDistanceRatio(MID_DISTANCE, horizontalRadius.toInt())
+        return Utils.realDistanceRatio(MID_DISTANCE, horizontalRadiusMid().toInt())
     }
     private fun getRemoteColor(interest: Int): Int {
         return when(interest) {
