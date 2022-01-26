@@ -25,12 +25,13 @@ import kotlinx.coroutines.launch
 import org.apache.commons.math3.distribution.UniformIntegerDistribution
 import kotlin.math.cos
 import kotlin.math.sin
+import android.graphics.Bitmap
 
 class DispMode {
     companion object {
         const val DEFAULT = 0
-        const val WIDE = 1
-        const val NARROW = 2
+        const val LARGE = 1
+        const val SMALL = 2
     }
 }
 open class MainCanvasView(context: Context): View(context), LifecycleOwner {
@@ -46,10 +47,12 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     }
     private lateinit var dirSensor: DirSensor
     private var mDispMode = DispMode.DEFAULT
+    private var horizontalRadius = 0f
     private var remoteDevs = mutableListOf<EntityDevice>()
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
         initRemoteDevs()
+        horizontalRadius = getHorizontalRadiusByMode()
 //        //compass drawing observer
 //        dirSensor.orientAngel.observe(this , {
 //            drawCompass()
@@ -173,12 +176,12 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
                 if(tappedI != null) displayRemoteDevice(tappedI)
                 //zoom in zoom out
                 else if(x in 20..100 && y in height-100 .. height-20) {
-                    changeDispMode(-1f)
+                    changeHorizontalRadiusByMode(-1f)
 //                    refreshInfo()
                     redrawBackground()
                     return true
                 } else if(x in 120..200 && y in height-100 .. height-20) {
-                    changeDispMode(1f)
+                    changeHorizontalRadiusByMode(1f)
 //                    refreshInfo()
                     redrawBackground()
                     return true
@@ -198,33 +201,83 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         return true
     }
     private val pinchListener = object: ScaleGestureDetector.SimpleOnScaleGestureListener() {
-        override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
-            //stop view redraw
-            infoRefreshHandler.removeCallbacks(infoRefreshTask)
-            return true
-        }
+//        override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
+//            //stop view redraw
+//            infoRefreshHandler.removeCallbacks(infoRefreshTask)
+//            return true
+//        }
         // When pinch zoom gesture occurred.
         override fun onScale(detector: ScaleGestureDetector): Boolean {
             //Toast.makeText(context, "on scale", Toast.LENGTH_SHORT).show()
             val scaleFactor = detector.scaleFactor
             scaleImage(scaleFactor, scaleFactor)
-            Log.e(TAG, "hello world:"+scaleFactor.toString())
             return true
         }
-        override fun onScaleEnd(detector: ScaleGestureDetector?) {
-            //restart view redraw
-            infoRefreshHandler.post(infoRefreshTask)
-        }
+//        override fun onScaleEnd(detector: ScaleGestureDetector?) {
+//            //restart view redraw
+//            infoRefreshHandler.post(infoRefreshTask)
+//        }
         //scale the image
         private fun scaleImage(xScale: Float, yScale: Float) {
-            val scaleMatrix = Matrix()
-            // Set x y scale value.
-            scaleMatrix.setScale(xScale, yScale)
-            changeDispMode(2-xScale-yScale)
-            // Create a new paint object.
-            val paint = Paint()
-            extraCanvas.drawBitmap(extraBitmap, scaleMatrix, paint)
+            val scaledWidth = extraBitmap.width*xScale
+            val scaledHeight = extraBitmap.height*yScale
+            val scaledBitmap = scale(extraBitmap, scaledWidth.toInt(), scaledHeight.toInt())
+            extraCanvas.drawBitmap(scaledBitmap,
+                centerX-scaledBitmap.width/2, centerY-scaledBitmap.height/2,
+                null)
             invalidate()//redraw immediately
+            //set horizontal radius
+            horizontalRadius = horizontalRadius * xScale
+            if(horizontalRadius > horizontalRadiusMax()) horizontalRadius = horizontalRadiusMax()
+            if(horizontalRadius < horizontalRadiusMin()) horizontalRadius = horizontalRadiusMin()
+            //set dispmode
+            if(horizontalRadiusMin() < horizontalRadius && horizontalRadius < horizontalRadiusMid()) {
+                if(horizontalRadius < (horizontalRadiusMin() + horizontalRadiusMid())/2) {
+                    mDispMode = DispMode.LARGE
+                } else {
+                    mDispMode = DispMode.DEFAULT
+                }
+            } else if(horizontalRadiusMid() < horizontalRadius && horizontalRadius < horizontalRadiusMax()) {
+                if(horizontalRadius < (horizontalRadiusMid() + horizontalRadiusMax())/2) {
+                    mDispMode = DispMode.DEFAULT
+                } else {
+                    mDispMode = DispMode.SMALL
+                }
+            } else {
+                mDispMode = DispMode.DEFAULT
+            }
+        }
+        // Scale a bitmap preserving the aspect ratio.
+        private fun scale(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
+            // Determine the constrained dimension, which determines both dimensions.
+            val width: Int
+            val height: Int
+            val widthRatio = bitmap.width.toFloat() / maxWidth
+            val heightRatio = bitmap.height.toFloat() / maxHeight
+            // Width constrained.
+            if (widthRatio >= heightRatio) {
+                width = maxWidth
+                height = (width.toFloat() / bitmap.width * bitmap.height).toInt()
+            } else {
+                height = maxHeight
+                width = (height.toFloat() / bitmap.height * bitmap.width).toInt()
+            }
+            val scaledBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val ratioX = width.toFloat() / bitmap.width
+            val ratioY = height.toFloat() / bitmap.height
+            val middleX = width / 2.0f
+            val middleY = height / 2.0f
+            val scaleMatrix = Matrix()
+            scaleMatrix.setScale(ratioX, ratioY, middleX, middleY)
+            val canvas = Canvas(scaledBitmap)
+            canvas.setMatrix(scaleMatrix)
+            canvas.drawBitmap(
+                bitmap,
+                middleX - bitmap.width / 2,
+                middleY - bitmap.height / 2,
+                Paint(Paint.FILTER_BITMAP_FLAG)
+            )
+            return scaledBitmap
         }
     }
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
@@ -296,7 +349,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         textSize = DISTANCE_TEXT_SIZE
     }
     private fun drawFar() {
-        val r = (getHorizontalRadius()*3f)/2f//(width*3f)/4f
+        val r = (horizontalRadius*3f)/2f//(width*3f)/4f
         val paint = Paint().apply {
             color = backgroundColorFar
             isAntiAlias = true
@@ -312,7 +365,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         extraCanvas.drawText(FAR_DISTANCE.toString()+"m", x, centerY-r, distancePaint)
     }
     private fun drawMid() {
-        val r = getHorizontalRadius()//width/2f
+        val r = horizontalRadius//width/2f
         val paint = Paint().apply {
             color = backgroundColorMid
             isAntiAlias = true
@@ -328,7 +381,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         extraCanvas.drawText(MID_DISTANCE.toString()+"m", x, centerY-r, distancePaint)
     }
     private fun drawNear() {
-        val r = getHorizontalRadius()/2f//width/4f
+        val r = horizontalRadius/2f//width/4f
         val paint = Paint().apply {
             color = backgroundColorNear
             isAntiAlias = true
@@ -373,7 +426,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     private fun drawRemote(i: Int, remoteDev: EntityDevice) {
 //        val theta = remoteDev.theta + Math.PI/2 - dirSensor.orientAngel.value!!
         val theta = remoteDev.theta + Math.PI/2 - DirSensor.orientAngel
-        val drawdistance = remoteDev.distance!!*(getHorizontalRadius()*2/width)
+        val drawdistance = remoteDev.distance!!*(horizontalRadius*2/width)
 //        remoteDev.currentx = centerX + remoteDev.distance!!*cos(theta).toFloat()
 //        remoteDev.currenty = centerY + remoteDev.distance!!*sin(theta).toFloat()
         remoteDev.currentx = centerX + drawdistance*cos(theta).toFloat()
@@ -424,7 +477,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
 //        val b = Random.nextFloat()
 //        val theta = (2*Math.PI)/ 2.toDouble().pow(b.toDouble())//[0,2pi)
         val theta = Math.random() * 2*Math.PI//[0,2pi) random
-        val r = UniformIntegerDistribution(20, width*3/4-20).sample()
+        val r = UniformIntegerDistribution(20, horizontalRadiusMax().toInt()-20).sample()
         remoteDev.theta = theta
         remoteDev.distance = r
 //        remoteDev.currentx = centerX + r* cos(theta).toFloat()
@@ -432,7 +485,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     }
     //utils
     private fun myDistanceRatio(): Float {
-        return Utils.realDistanceRatio(MID_DISTANCE, getHorizontalRadius().toInt())
+        return Utils.realDistanceRatio(MID_DISTANCE, getHorizontalRadiusByMode().toInt())
     }
     private fun getRemoteColor(interest: Int): Int {
         return when(interest) {
@@ -441,21 +494,32 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             else -> remoteColor
         }
     }
-    private fun getHorizontalRadius(): Float {
+    private fun horizontalRadiusMax(): Float {
+        return width*3f/4
+    }
+    private fun horizontalRadiusMid(): Float {
+        return width/2f
+    }
+    private fun horizontalRadiusMin(): Float {
+        return width*3f/8
+    }
+    private fun getHorizontalRadiusByMode(): Float {
         return (when(mDispMode) {
-            DispMode.WIDE -> width*3f/8
-            DispMode.NARROW -> width*3f/4
-            else -> width/2f
+            DispMode.LARGE -> horizontalRadiusMin()
+            DispMode.SMALL -> horizontalRadiusMax()
+            else -> horizontalRadiusMid()
         })
     }
-    private fun changeDispMode(scale: Float) {
-        if(scale > 0) {
-            if(mDispMode == DispMode.NARROW) mDispMode = DispMode.DEFAULT
-            else if(mDispMode == DispMode.DEFAULT) mDispMode = DispMode.WIDE
-        } else if(scale < 0) {
-            if(mDispMode == DispMode.WIDE) mDispMode = DispMode.DEFAULT
-            else if(mDispMode == DispMode.DEFAULT) mDispMode = DispMode.NARROW
+    private fun changeHorizontalRadiusByMode(scale: Float) {
+        if(scale > 0) {//small -> large
+            if(mDispMode == DispMode.SMALL) mDispMode = DispMode.DEFAULT
+            else if(mDispMode == DispMode.DEFAULT) mDispMode = DispMode.LARGE
+        } else if(scale < 0) {//large -> small
+            if(mDispMode == DispMode.LARGE) mDispMode = DispMode.DEFAULT
+            else if(mDispMode == DispMode.DEFAULT) mDispMode = DispMode.SMALL
         }
+        //set horizontal radius
+        horizontalRadius = getHorizontalRadiusByMode()
     }
 
     companion object {
