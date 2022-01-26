@@ -232,17 +232,11 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             if(horizontalRadius < horizontalRadiusMin()) horizontalRadius = horizontalRadiusMin()
             //set dispmode
             if(horizontalRadiusMin() < horizontalRadius && horizontalRadius < horizontalRadiusMid()) {
-                if(horizontalRadius < (horizontalRadiusMin() + horizontalRadiusMid())/2) {
-                    mDispMode = DispMode.LARGE
-                } else {
-                    mDispMode = DispMode.DEFAULT
-                }
+                //between min-mid -> displaying large
+                mDispMode = DispMode.LARGE
             } else if(horizontalRadiusMid() < horizontalRadius && horizontalRadius < horizontalRadiusMax()) {
-                if(horizontalRadius < (horizontalRadiusMid() + horizontalRadiusMax())/2) {
-                    mDispMode = DispMode.DEFAULT
-                } else {
-                    mDispMode = DispMode.SMALL
-                }
+                //between mid-max -> displaying small
+                mDispMode = DispMode.SMALL
             } else {
                 mDispMode = DispMode.DEFAULT
             }
