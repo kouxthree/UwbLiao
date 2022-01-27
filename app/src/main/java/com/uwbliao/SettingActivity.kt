@@ -11,7 +11,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.uwbliao.databinding.ActivitySettingBinding
-import com.uwbliao.db.Gender
 import kotlinx.coroutines.launch
 
 class SettingActivity : AppCompatActivity() {
@@ -29,10 +28,10 @@ class SettingActivity : AppCompatActivity() {
         //config scan numbers
         configScanNums()
         //read from db
-        settingViewModel.mynickname.observe(this, {
+        settingViewModel.mynickname.observe(this) {
             binding.txtMyNickname.setText(it)
-        })
-        settingViewModel.mygender.observe(this, {
+        }
+        settingViewModel.mygender.observe(this) {
             when (it) {
                 Gender.MALE -> {
                     binding.rdbMyGenderMale.isChecked = true
@@ -44,8 +43,8 @@ class SettingActivity : AppCompatActivity() {
                     binding.rdbMyGenderOther.isChecked = true
                 }
             }
-        })
-        settingViewModel.remoteGender.observe(this, {
+        }
+        settingViewModel.remoteGender.observe(this) {
             when (it) {
                 Gender.MALE -> {
                     binding.rdbRemoteGenderMale.isChecked = true
@@ -57,7 +56,7 @@ class SettingActivity : AppCompatActivity() {
                     binding.rdbRemoteGenderOther.isChecked = true
                 }
             }
-        })
+        }
         //write to db
         binding.txtMyNickname.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable) {}
@@ -103,13 +102,13 @@ class SettingActivity : AppCompatActivity() {
     }
     //config scan num number picker
     private fun configScanNums() {
-        binding.scanNums.setMinValue(0)
-        binding.scanNums.setMaxValue(SCAN_NUMS_MAX)
+        binding.scanNums.minValue = 0
+        binding.scanNums.maxValue = SCAN_NUMS_MAX
         //read from db
-        settingViewModel.scanNums.observe(this, {
+        settingViewModel.scanNums.observe(this) {
             binding.scanNums.value = it
             scanRemoteNums = it
-        })
+        }
         //write to db
         binding.scanNums.setOnValueChangedListener { picker, oldVal, newVal ->
             lifecycleScope.launch { storeScanNums(newVal) }

@@ -3,6 +3,7 @@ package com.uwbliao.db
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.uwbliao.Gender
 import com.uwbliao.MY_NICKNAME_DEFAULT
 
 @Entity
@@ -15,11 +16,3 @@ data class EntitySetting(
     @ColumnInfo(name = "remote_gender") var remoteGender: Int = Gender.OTHER,
     @ColumnInfo(name = "scan_nums") var scanNums: Int = 0,
 )
-
-class Gender {
-    companion object {
-        const val OTHER = 0
-        const val MALE = 1
-        const val FEMALE = 2
-    }
-}

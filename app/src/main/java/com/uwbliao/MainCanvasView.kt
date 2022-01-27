@@ -5,7 +5,6 @@ import android.content.Context
 import android.graphics.*
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -17,23 +16,18 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.uwbliao.databinding.BlacklistDspBinding
 import com.uwbliao.databinding.RemoteDevDspBinding
 import com.uwbliao.db.EntityDevice
-import com.uwbliao.db.Interest
 import com.uwbliao.db.RepDevice
+import com.uwbliao.recycler.BlacklistRecyclerAdapter
+import com.uwbliao.recycler.BlacklistRecyclerItem
 import kotlinx.coroutines.launch
 import org.apache.commons.math3.distribution.UniformIntegerDistribution
 import kotlin.math.cos
 import kotlin.math.sin
-import android.graphics.Bitmap
 
-class DispMode {
-    companion object {
-        const val DEFAULT = 0
-        const val LARGE = 1
-        const val SMALL = 2
-    }
-}
 open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     private lateinit var bitmapCompass: Bitmap
     init {
@@ -70,8 +64,22 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
                 remoteDevs.add(dev)
             }
         }
-        if(remoteDevs.size > 0) remoteDevs[0].nickname = "西施"
-        if(remoteDevs.size > 2) remoteDevs[2].nickname = "貂蝉"
+        if(remoteDevs.size > 0) {
+            remoteDevs[0].nickname = "貂蝉"
+            remoteDevs[0].gender = Gender.FEMALE
+        }
+        if(remoteDevs.size > 1) {
+            remoteDevs[1].nickname = "吕布"
+            remoteDevs[1].gender = Gender.MALE
+        }
+        if(remoteDevs.size > 2) {
+            remoteDevs[2].nickname = "西施"
+            remoteDevs[2].gender = Gender.FEMALE
+        }
+        if(remoteDevs.size > 3) {
+            remoteDevs[3].nickname = "勾践"
+            remoteDevs[3].gender = Gender.MALE
+        }
     }
     private val lifecycleRegistry = LifecycleRegistry(this)
     override fun getLifecycle() = lifecycleRegistry
@@ -110,11 +118,25 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     }
     private fun drawAdjust() {
         val dplus = AppCompatResources.getDrawable(context, R.drawable.ic_adjust_plus)
-        dplus!!.setBounds(20, height-100, 100, height-20)
+        dplus!!.setBounds(ZoomInRec.left,
+            height-(ZoomInRec.bottom+ZoomInRec.height),
+            ZoomInRec.left+ZoomInRec.width,
+            height-ZoomInRec.bottom)
         dplus.draw(extraCanvas)
         val dminus = AppCompatResources.getDrawable(context, R.drawable.ic_adjust_minus)
-        dminus!!.setBounds(120, height-100, 200, height-20)
+        dminus!!.setBounds(ZoomOutRec.left,
+            height-(ZoomOutRec.bottom+ZoomOutRec.height),
+            ZoomOutRec.left+ZoomOutRec.width,
+            height-ZoomOutRec.bottom)
         dminus.draw(extraCanvas)
+    }
+    private fun drawBlacklist() {
+        val b = AppCompatResources.getDrawable(context, R.drawable.ic_blacklist)
+        b!!.setBounds(width-(BlacklistRec.width+BlacklistRec.right),
+            height-(ZoomInRec.bottom+ZoomInRec.height),
+            width-BlacklistRec.right,
+            height-ZoomInRec.bottom)
+        b.draw(extraCanvas)
     }
     private var infoRefreshHandler: Handler = Handler(Looper.getMainLooper())//for info refreshing
     private var infoRefreshTask = object : Runnable {
@@ -159,6 +181,9 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         super.onTouchEvent(event)
         val x = event.x.toInt()
         val y = event.y.toInt()
+        val zoomInRec = ZoomInRec(width, height)
+        val zoomOutRec = ZoomOutRec(width, height)
+        val blacklistRec = BlacklistRec(width, height)
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 var tappedI: Int? = null
@@ -173,18 +198,30 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
                         preD = d
                     }
                 }
-                if(tappedI != null) displayRemoteDevice(tappedI)
-                //zoom in zoom out
-                else if(x in 20..100 && y in height-100 .. height-20) {
-                    changeHorizontalRadiusByMode(-1f)
-//                    refreshInfo()
-                    redrawBackground()
-                    return true
-                } else if(x in 120..200 && y in height-100 .. height-20) {
-                    changeHorizontalRadiusByMode(1f)
-//                    refreshInfo()
-                    redrawBackground()
-                    return true
+                when {
+                    tappedI != null -> {
+                        //remote device tapped
+                        displayRemoteDevice(tappedI)
+                    }
+                    zoomInRec.hit(x,y) -> {
+                        //zoom in
+                        changeHorizontalRadiusByMode(-1f)
+                        refreshInfo()
+                        invalidate()
+                        return true
+                    }
+                    zoomOutRec.hit(x,y) -> {
+                        //zoom out
+                        changeHorizontalRadiusByMode(1f)
+                        refreshInfo()
+                        invalidate()
+                        return true
+                    }
+                    blacklistRec.hit(x,y) -> {
+                        //blacklist
+                        displayBlacklist()
+                        return true
+                    }
                 }
             }
             MotionEvent.ACTION_MOVE -> {
@@ -227,18 +264,18 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
                 null)
             invalidate()//redraw immediately
             //set horizontal radius
-            horizontalRadius = horizontalRadius * xScale
+            horizontalRadius *= xScale
             if(horizontalRadius > horizontalRadiusMax()) horizontalRadius = horizontalRadiusMax()
             if(horizontalRadius < horizontalRadiusMin()) horizontalRadius = horizontalRadiusMin()
             //set dispmode
-            if(horizontalRadiusMin() < horizontalRadius && horizontalRadius < horizontalRadiusMid()) {
+            mDispMode = if(horizontalRadiusMin() < horizontalRadius && horizontalRadius < horizontalRadiusMid()) {
                 //between min-mid -> displaying large
-                mDispMode = DispMode.LARGE
+                DispMode.LARGE
             } else if(horizontalRadiusMid() < horizontalRadius && horizontalRadius < horizontalRadiusMax()) {
                 //between mid-max -> displaying small
-                mDispMode = DispMode.SMALL
+                DispMode.SMALL
             } else {
-                mDispMode = DispMode.DEFAULT
+                DispMode.DEFAULT
             }
         }
         // Scale a bitmap preserving the aspect ratio.
@@ -289,7 +326,8 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         dsp.setView(mBinding.root.rootView)
         val dlg = dsp.create()
         dlg.setCanceledOnTouchOutside(true)
-        (idx.toString() + ":" + remoteDevs[idx].nickname.toString()).also { mBinding.txtNickname.text = it }
+        (idx.toString() + "/" + Gender.getName(resources, remoteDevs[idx].gender) + ":"
+                + remoteDevs[idx].nickname.toString()).also { mBinding.txtNickname.text = it }
         (Utils.realDistanceFromCoordinateDistance(remoteDevs[idx].distance, myDistanceRatio())
             .formatDecimalPoint1() + "m").also { mBinding.txtDistance.text = it }
         when(remoteDevs[idx].interest) {
@@ -329,6 +367,47 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             //save to db
             val repdev = RepDevice(remoteDevs[idx].deviceName)
             lifecycleScope.launch { repdev.updateDevice(remoteDevs[idx]) }
+        }
+        //blacklist icon
+        mBinding.imgBlacklist.setOnClickListener {
+            if(remoteDevs[idx].hide) {
+                mBinding.imgBlacklist.setImageResource(R.drawable.ic_blacklist_off)
+                remoteDevs[idx].hide = false
+            } else {
+                mBinding.imgBlacklist.setImageResource(R.drawable.ic_blacklist_on)
+                remoteDevs[idx].hide = true
+            }
+            //save to db
+            val repdev = RepDevice(remoteDevs[idx].deviceName)
+            lifecycleScope.launch { repdev.updateDevice(remoteDevs[idx]) }
+        }
+        dlg.show()
+    }
+    //display blacklist dialog
+    private fun displayBlacklist() {
+        val dsp = AlertDialog.Builder(context)
+        val mBinding = BlacklistDspBinding.inflate(LayoutInflater.from(context))
+        dsp.setView(mBinding.root.rootView)
+        val dlg = dsp.create()
+        dlg.setCanceledOnTouchOutside(true)
+        dlg.setTitle(resources.getString(R.string.txt_blacklist_title))
+        //recycler
+        val blacklistRecyclerAdapter = BlacklistRecyclerAdapter()
+        val layoutManager = LinearLayoutManager(context)
+        mBinding.listBlacklist.layoutManager = layoutManager
+        mBinding.listBlacklist.adapter = blacklistRecyclerAdapter
+        //add blacklist items
+        for(i in 0 until SettingActivity.scanRemoteNums) {
+            if(remoteDevs[i].hide) {
+                blacklistRecyclerAdapter.addSingleItem(
+                    BlacklistRecyclerItem(
+                        DeviceName = remoteDevs[i].deviceName,
+                        Nickname = remoteDevs[i].nickname.toString(),
+                        Gender = Gender.getName(resources, remoteDevs[i].gender),
+                        RemoteDev = remoteDevs[i]
+                    )
+                )
+            }
         }
         dlg.show()
     }
@@ -416,6 +495,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         drawMe()
         drawCompass()
         drawAdjust()
+        drawBlacklist()
     }
     private fun drawRemote(i: Int, remoteDev: EntityDevice) {
 //        val theta = remoteDev.theta + Math.PI/2 - dirSensor.orientAngel.value!!
@@ -460,7 +540,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         for(i in 2 until SettingActivity.scanRemoteNums) {
             if(i > remoteDevs.size-1) break
             if(remoteDevs[i].distance == null) updateRemoteLocation(remoteDevs[i])
-            drawRemote(i, remoteDevs[i])
+            if(!remoteDevs[i].hide) drawRemote(i, remoteDevs[i])
         }
     }
     private fun updateRemoteLocation(remoteDev: EntityDevice) {
@@ -472,8 +552,10 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
 //        val theta = (2*Math.PI)/ 2.toDouble().pow(b.toDouble())//[0,2pi)
         val theta = Math.random() * 2*Math.PI//[0,2pi) random
         val r = UniformIntegerDistribution(20, horizontalRadiusMax().toInt()-20).sample()
+        val gender = UniformIntegerDistribution(0, 3).sample()
         remoteDev.theta = theta
         remoteDev.distance = r
+        remoteDev.gender = gender
 //        remoteDev.currentx = centerX + r* cos(theta).toFloat()
 //        remoteDev.currenty = centerY + r* sin(theta).toFloat()
     }
