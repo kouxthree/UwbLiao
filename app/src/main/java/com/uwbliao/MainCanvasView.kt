@@ -385,7 +385,11 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     }
     //display blacklist dialog
     private fun displayBlacklist() {
-        val dsp = AlertDialog.Builder(context)
+        val dsp = AlertDialog.Builder(
+            context,
+//            R.style.FullscreenAlertDialogStyle
+//            android.R.style.Theme_Material_Light_NoActionBar_Fullscreen
+        )
         val mBinding = BlacklistDspBinding.inflate(LayoutInflater.from(context))
         dsp.setView(mBinding.root.rootView)
         val dlg = dsp.create()
