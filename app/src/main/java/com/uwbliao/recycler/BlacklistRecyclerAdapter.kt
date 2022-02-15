@@ -144,8 +144,16 @@ class BlacklistRecyclerAdapter : LifecycleOwner, RecyclerView.Adapter<BlacklistR
                     }
                     touchStartX = 0f//reinitialization
                 }
+                MotionEvent.ACTION_CANCEL -> {
+                    //move back to original position
+                    v.animate()
+                        .x(0f)
+                        .setDuration(150)
+                        .start()
+                    touchStartX = 0f//reinitialization
+                }
             }
-//            v.performClick()// required to by-pass lint warning
+            v.performClick()// required to by-pass lint warning
             return true
         }
 
