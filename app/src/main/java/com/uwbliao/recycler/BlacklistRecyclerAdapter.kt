@@ -1,7 +1,5 @@
 package com.uwbliao.recycler
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -13,9 +11,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.uwbliao.databinding.BlacklistItemBinding
 import com.uwbliao.db.RepDevice
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.absoluteValue
 
 class BlacklistRecyclerAdapter : LifecycleOwner, RecyclerView.Adapter<BlacklistRecyclerAdapter.ResultHolder>() {
 
@@ -91,30 +88,39 @@ class BlacklistRecyclerAdapter : LifecycleOwner, RecyclerView.Adapter<BlacklistR
 //            removeBlacklistItem()
 //        }
 
+        private var touchStartX = 0f
         override fun onTouch(v: View, e: MotionEvent): Boolean {
-            // variables to store current configuration of blacklist dialog
-            val displayMetrics = v.context.resources.displayMetrics
-            val dlgWidth = v.width
-            val dlgStart = (displayMetrics.widthPixels.toFloat() / 2) - (dlgWidth / 2)
+//            // variables to store current configuration of blacklist dialog
+//            val displayMetrics = v.context.resources.displayMetrics
+//            val dlgWidth = v.width
+//            val dlgStart = (displayMetrics.widthPixels.toFloat() / 2) - (dlgWidth / 2)
             when (e.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    touchStartX = e.rawX
+                }
                 MotionEvent.ACTION_MOVE -> {
-                    val newX = e.rawX
-                    //swipe to the left only
-                    if (newX - dlgWidth < dlgStart) {
-                        v.animate()
-                            .x(kotlin.math.min(dlgStart, newX - (dlgWidth / 2)))
-                            .setDuration(0)
-                            .start()
-                    }
+//                    val newX = e.rawX
+//                    //swipe to the left only
+//                    if (newX - dlgWidth < dlgStart) {
+//                        v.animate()
+//                            .x(kotlin.math.min(dlgStart, newX - (dlgWidth / 2)))
+//                            .setDuration(0)
+//                            .start()
+//                    }
+                    v.animate()
+                        .x(e.rawX - touchStartX)
+                        .setDuration(0)
+                        .start()
                 }
                 MotionEvent.ACTION_UP -> {
-                    var currentX = v.x
-                    v.animate()
-                        .x(dlgStart)
-                        .setDuration(150)
-                        .setListener(
-                            object : AnimatorListenerAdapter() {
-                                override fun onAnimationEnd(animation: Animator) {
+                    val movedX = v.x//moved x distance
+                    if(movedX.absoluteValue >= MIN_REMOVE_SWIPE_DISTANCE) { //moved horizontally
+//                    v.animate()
+//                        .x(dlgStart)
+//                        .setDuration(150)
+//                        .setListener(
+//                            object : AnimatorListenerAdapter() {
+//                                override fun onAnimationEnd(animation: Animator) {
 //                                    lifecycleScope.launch(Dispatchers.Default) {
 //                                        delay(100)
 //                                        if (currentX < MIN_SWIPE_DISTANCE) {
@@ -124,18 +130,22 @@ class BlacklistRecyclerAdapter : LifecycleOwner, RecyclerView.Adapter<BlacklistR
 //                                            removeBlacklistItem()
 //                                        }
 //                                    }
-                                    if (currentX < MIN_SWIPE_DISTANCE) {
-                                        currentX = 0f
-                                    } else {
-                                        removeBlacklistItem()
-                                    }
-                                }
-                            }
-                        )
-                        .start()
+//                                }
+//                            }
+//                        )
+//                        .start()
+                        removeBlacklistItem()
+                    } else {
+                        //move back to original position
+                        v.animate()
+                            .x(0f)
+                            .setDuration(150)
+                            .start()
+                    }
+                    touchStartX = 0f//reinitialization
                 }
             }
-            v.performClick()// required to by-pass lint warning
+//            v.performClick()// required to by-pass lint warning
             return true
         }
 
@@ -152,8 +162,14 @@ class BlacklistRecyclerAdapter : LifecycleOwner, RecyclerView.Adapter<BlacklistR
         }
     }
 
+    inner class UndoRemoveListener : View.OnClickListener {
+        override fun onClick(v: View) {
+            // Code to undo the user's last action
+        }
+    }
+
     companion object {
         private val TAG = BlacklistRecyclerAdapter::class.java.simpleName
-        const val MIN_SWIPE_DISTANCE = -250
+        const val MIN_REMOVE_SWIPE_DISTANCE = 250//item will be removed at least this distance was moved
     }
 }
