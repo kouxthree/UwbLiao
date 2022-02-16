@@ -9,6 +9,9 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
+import com.uwbliao.MainApplication
+import com.uwbliao.R
 import com.uwbliao.databinding.BlacklistItemBinding
 import com.uwbliao.db.RepDevice
 import kotlinx.coroutines.launch
@@ -92,64 +95,39 @@ class BlacklistRecyclerAdapter : LifecycleOwner, RecyclerView.Adapter<BlacklistR
         override fun onTouch(v: View, e: MotionEvent): Boolean {
 //            // variables to store current configuration of blacklist dialog
 //            val displayMetrics = v.context.resources.displayMetrics
-//            val dlgWidth = v.width
-//            val dlgStart = (displayMetrics.widthPixels.toFloat() / 2) - (dlgWidth / 2)
             when (e.action) {
                 MotionEvent.ACTION_DOWN -> {
                     touchStartX = e.rawX
                 }
                 MotionEvent.ACTION_MOVE -> {
-//                    val newX = e.rawX
-//                    //swipe to the left only
-//                    if (newX - dlgWidth < dlgStart) {
-//                        v.animate()
-//                            .x(kotlin.math.min(dlgStart, newX - (dlgWidth / 2)))
-//                            .setDuration(0)
-//                            .start()
-//                    }
-                    v.animate()
-                        .x(e.rawX - touchStartX)
-                        .setDuration(0)
-                        .start()
+                    v.animate().x(e.rawX - touchStartX)
+                        .setDuration(0).start()
                 }
                 MotionEvent.ACTION_UP -> {
                     val movedX = v.x//moved x distance
                     if(movedX.absoluteValue >= MIN_REMOVE_SWIPE_DISTANCE) { //moved horizontally
-//                    v.animate()
-//                        .x(dlgStart)
-//                        .setDuration(150)
+//                    v.animate().x(dlgStart).setDuration(150)
 //                        .setListener(
 //                            object : AnimatorListenerAdapter() {
 //                                override fun onAnimationEnd(animation: Animator) {
 //                                    lifecycleScope.launch(Dispatchers.Default) {
 //                                        delay(100)
-//                                        if (currentX < MIN_SWIPE_DISTANCE) {
-//                                            currentX = 0f
-//                                        }
-//                                        else {
-//                                            removeBlacklistItem()
-//                                        }
 //                                    }
 //                                }
 //                            }
 //                        )
 //                        .start()
-                        removeBlacklistItem()
+                        v.x = 0f// move back to original position
+                        removeBlacklistItem(v)
                     } else {
                         //move back to original position
-                        v.animate()
-                            .x(0f)
-                            .setDuration(150)
-                            .start()
+                        v.animate().x(0f).setDuration(150).start()
                     }
                     touchStartX = 0f//reinitialization
                 }
                 MotionEvent.ACTION_CANCEL -> {
                     //move back to original position
-                    v.animate()
-                        .x(0f)
-                        .setDuration(150)
-                        .start()
+                    v.animate().x(0f).setDuration(150).start()
                     touchStartX = 0f//reinitialization
                 }
             }
@@ -157,7 +135,8 @@ class BlacklistRecyclerAdapter : LifecycleOwner, RecyclerView.Adapter<BlacklistR
             return true
         }
 
-        private fun removeBlacklistItem() {
+        private fun removeBlacklistItem(v: View) {
+            val removedPos = adapterPosition
             //remove from list
             itemsList.removeAt(adapterPosition)
             notifyItemRemoved(adapterPosition)
@@ -167,13 +146,33 @@ class BlacklistRecyclerAdapter : LifecycleOwner, RecyclerView.Adapter<BlacklistR
             repdev.entityDevice!!.hide = false
             _item?.RemoteDev!!.hide = false
             lifecycleScope.launch { repdev.updateDevice(repdev.entityDevice) }
+            //undo remove action
+            val undoSnackbar = Snackbar.make(binding.root.rootView,
+                v.context.resources.getString(R.string.txt_blacklist_item_remove_msg),
+                Snackbar.LENGTH_SHORT)
+            undoSnackbar.setAction(
+                v.context.resources.getString(R.string.txt_undo_blacklist_item_remove_msg),
+                UndoRemoveListener(repdev, removedPos, _item!!)
+            )
+            undoSnackbar.show()
         }
-    }
 
-    inner class UndoRemoveListener : View.OnClickListener {
-        override fun onClick(v: View) {
-            // Code to undo the user's last action
+        inner class UndoRemoveListener(
+            repdev: RepDevice, removedPos: Int, item: BlacklistRecyclerItem) : View.OnClickListener {
+            private val _repdev = repdev
+            private val _removedPos = removedPos
+            private val _item = item
+            override fun onClick(v: View) {
+                //undo remove blacklist item
+                itemsList.add(_removedPos, _item)
+                notifyItemRangeChanged(_removedPos, itemsList.size)
+                //save to db
+                _repdev.entityDevice!!.hide = true
+                _item.RemoteDev.hide = true
+                lifecycleScope.launch { _repdev.updateDevice(_repdev.entityDevice) }
+            }
         }
+
     }
 
     companion object {

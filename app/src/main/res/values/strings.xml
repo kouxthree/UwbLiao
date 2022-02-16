@@ -14,4 +14,6 @@
     <string name="txt_distance">距离</string>
     <string name="txt_invitation">你好</string>
     <string name="txt_blacklist_title">黑名单</string>
+    <string name="txt_blacklist_item_remove_msg">完成清除黑名单</string>
+    <string name="txt_undo_blacklist_item_remove_msg">重设</string>
 </resources>
