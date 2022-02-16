@@ -396,7 +396,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         dlg.setCanceledOnTouchOutside(true)
         dlg.setTitle(resources.getString(R.string.txt_blacklist_title))
         //recycler
-        val blacklistRecyclerAdapter = BlacklistRecyclerAdapter()
+        val blacklistRecyclerAdapter = BlacklistRecyclerAdapter(mBinding)
         val layoutManager = LinearLayoutManager(context)
         mBinding.listBlacklist.layoutManager = layoutManager
         mBinding.listBlacklist.adapter = blacklistRecyclerAdapter

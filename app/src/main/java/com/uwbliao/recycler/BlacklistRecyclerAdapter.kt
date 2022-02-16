@@ -12,12 +12,16 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.uwbliao.MainApplication
 import com.uwbliao.R
+import com.uwbliao.databinding.ActivityMainBinding
+import com.uwbliao.databinding.BlacklistDspBinding
 import com.uwbliao.databinding.BlacklistItemBinding
+import com.uwbliao.databinding.RemoteDevDspBinding
 import com.uwbliao.db.RepDevice
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
-class BlacklistRecyclerAdapter : LifecycleOwner, RecyclerView.Adapter<BlacklistRecyclerAdapter.ResultHolder>() {
+class BlacklistRecyclerAdapter(private val blacklistDspBinding: BlacklistDspBinding):
+    LifecycleOwner, RecyclerView.Adapter<BlacklistRecyclerAdapter.ResultHolder>() {
 
     private val lifecycleRegistry = LifecycleRegistry(this)
     override fun getLifecycle() = lifecycleRegistry
@@ -136,7 +140,7 @@ class BlacklistRecyclerAdapter : LifecycleOwner, RecyclerView.Adapter<BlacklistR
         }
 
         private fun removeBlacklistItem(v: View) {
-            val removedPos = adapterPosition
+              val removedPos = adapterPosition
             //remove from list
             itemsList.removeAt(adapterPosition)
             notifyItemRemoved(adapterPosition)
@@ -147,14 +151,15 @@ class BlacklistRecyclerAdapter : LifecycleOwner, RecyclerView.Adapter<BlacklistR
             _item?.RemoteDev!!.hide = false
             lifecycleScope.launch { repdev.updateDevice(repdev.entityDevice) }
             //undo remove action
-            val undoSnackbar = Snackbar.make(binding.root.rootView,
+            val undoSnackbar = Snackbar.make(blacklistDspBinding.undoCoordinatorLayout, //binding.root.rootView,
                 v.context.resources.getString(R.string.txt_blacklist_item_remove_msg),
                 Snackbar.LENGTH_SHORT)
             undoSnackbar.setAction(
                 v.context.resources.getString(R.string.txt_undo_blacklist_item_remove_msg),
                 UndoRemoveListener(repdev, removedPos, _item!!)
             )
-            undoSnackbar.show()
+//            undoSnackbar.setAnchorView(mainView).show()
+            undoSnackbar.setAnchorView(blacklistDspBinding.undoCoordinatorLayout).show()
         }
 
         inner class UndoRemoveListener(
@@ -177,6 +182,6 @@ class BlacklistRecyclerAdapter : LifecycleOwner, RecyclerView.Adapter<BlacklistR
 
     companion object {
         private val TAG = BlacklistRecyclerAdapter::class.java.simpleName
-        const val MIN_REMOVE_SWIPE_DISTANCE = 250//item will be removed at least this distance was moved
+        const val MIN_REMOVE_SWIPE_DISTANCE = 50//item will be removed at least this distance was moved
     }
 }
