@@ -10,12 +10,9 @@ import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
-import com.uwbliao.MainApplication
 import com.uwbliao.R
-import com.uwbliao.databinding.ActivityMainBinding
 import com.uwbliao.databinding.BlacklistDspBinding
 import com.uwbliao.databinding.BlacklistItemBinding
-import com.uwbliao.databinding.RemoteDevDspBinding
 import com.uwbliao.db.RepDevice
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
@@ -89,10 +86,12 @@ class BlacklistRecyclerAdapter(private val blacklistDspBinding: BlacklistDspBind
             }
             //this.itemView.setBackgroundColor(Color.parseColor("#ff4d4d"))
             _item = item
+            //move item x coordinate back to original position
+            super.itemView.x = 0f
         }
 
 //        override fun onClick(v: View) {
-//            removeBlacklistItem()
+//
 //        }
 
         private var touchStartX = 0f
@@ -107,9 +106,9 @@ class BlacklistRecyclerAdapter(private val blacklistDspBinding: BlacklistDspBind
                     v.animate().x(e.rawX - touchStartX)
                         .setDuration(0).start()
                 }
-                MotionEvent.ACTION_UP -> {
-                    val movedX = v.x//moved x distance
-                    if(movedX.absoluteValue >= MIN_REMOVE_SWIPE_DISTANCE) { //moved horizontally
+//                MotionEvent.ACTION_UP -> {
+//                    val movedX = v.x//moved x distance
+//                    if(movedX.absoluteValue >= MIN_REMOVE_SWIPE_DISTANCE) { //moved horizontally
 //                    v.animate().x(dlgStart).setDuration(150)
 //                        .setListener(
 //                            object : AnimatorListenerAdapter() {
@@ -121,17 +120,20 @@ class BlacklistRecyclerAdapter(private val blacklistDspBinding: BlacklistDspBind
 //                            }
 //                        )
 //                        .start()
-                        v.x = 0f// move back to original position
-                        removeBlacklistItem(v)
-                    } else {
-                        //move back to original position
-                        v.animate().x(0f).setDuration(150).start()
-                    }
-                    touchStartX = 0f//reinitialization
-                }
+//                        v.x = 0f// move back to original position
+//                        removeBlacklistItem(v)
+//                    } else {
+//                        //move back to original position
+//                        v.animate().x(0f).setDuration(150).start()
+//                    }
+//                    if(movedX.absoluteValue > 0) removeBlacklistItem(v)
+//                    touchStartX = 0f//reinitialization
+//                }
+                MotionEvent.ACTION_UP,
                 MotionEvent.ACTION_CANCEL -> {
-                    //move back to original position
-                    v.animate().x(0f).setDuration(150).start()
+                    val movedX = v.x//moved x distance
+//                    v.x = 0f//move back to original position
+                    if(movedX.absoluteValue > 0) removeBlacklistItem(v)
                     touchStartX = 0f//reinitialization
                 }
             }
@@ -182,6 +184,6 @@ class BlacklistRecyclerAdapter(private val blacklistDspBinding: BlacklistDspBind
 
     companion object {
         private val TAG = BlacklistRecyclerAdapter::class.java.simpleName
-        const val MIN_REMOVE_SWIPE_DISTANCE = 50//item will be removed at least this distance was moved
+//        const val MIN_REMOVE_SWIPE_DISTANCE = 50//item will be removed at least this distance was moved
     }
 }
