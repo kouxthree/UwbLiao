@@ -5,6 +5,8 @@ import android.content.Context
 import android.graphics.*
 import android.os.Handler
 import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -330,11 +332,14 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
                 + remoteDevs[idx].nickname.toString()).also { mBinding.txtNickname.text = it }
         (Utils.realDistanceFromCoordinateDistance(remoteDevs[idx].distance, myDistanceRatio())
             .formatDecimalPoint1() + "m").also { mBinding.txtDistance.text = it }
+        //favorite icon
         when(remoteDevs[idx].interest) {
             Interest.INTERESTED -> {
                 mBinding.imgInterest.setImageResource(R.drawable.ic_favorite)
             }
         }
+        //comment text
+        mBinding.txtComment.setText(remoteDevs[idx].comment)
         //cancel button
         mBinding.btnCancel.setOnClickListener {
             dlg.dismiss()
@@ -352,6 +357,20 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             }
             handled
         }
+        //comment text
+        mBinding.txtComment.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable) {}
+            override fun beforeTextChanged(
+                s: CharSequence, start: Int,count: Int, after: Int
+            ) {}
+            override fun onTextChanged(
+                s: CharSequence, start: Int, before: Int, count: Int
+            ) {
+                remoteDevs[idx].comment = s.toString()
+                val repdev = RepDevice(remoteDevs[idx].deviceName)
+                lifecycleScope.launch { repdev.updateDevice(remoteDevs[idx]) }
+            }
+        })
         //favorite icon
         mBinding.imgInterest.setOnClickListener {
             when(remoteDevs[idx].interest) {

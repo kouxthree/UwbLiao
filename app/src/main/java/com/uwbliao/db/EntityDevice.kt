@@ -15,6 +15,7 @@ data class EntityDevice(
     @ColumnInfo(name = "hide") var hide: Boolean = false,//true:hide false:show
     @ColumnInfo(name = "nickname") var nickname: String? = null,
     @ColumnInfo(name = "gender") var gender: Int = Gender.OTHER,
+    @ColumnInfo(name = "comment") var comment: String = "",
     @ColumnInfo(name = "distance") var distance: Int? = null,//meter
     @ColumnInfo(name = "theta") var theta: Double = 0.toDouble(),//angle
     var currentx: Float = 0f,
