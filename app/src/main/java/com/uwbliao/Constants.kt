@@ -47,6 +47,13 @@ class DispMode {
     }
 }
 
+class ChatMsgType {
+    companion object {
+        const val IN = 0
+        const val OUT = 1
+    }
+}
+
 class ZoomInRec(screenWidth: Int, screenHeight: Int) {
     var screenWidth = 0
     var screenHeight = 0

@@ -16,7 +16,7 @@ class RepDevice(deviceName: String) {
     private suspend fun insertDevice(dname: String) {
         entityDevice = EntityDevice()
         entityDevice!!.deviceName = dname
-        return withContext(Dispatchers.IO) { daoDevice.insertAll(entityDevice!!) }
+        return withContext(Dispatchers.IO) { daoDevice.insert(entityDevice!!) }
     }
     private suspend fun getDevice(dname: String): EntityDevice? {
         entityDevice = withContext(Dispatchers.IO) {

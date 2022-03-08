@@ -15,7 +15,7 @@ class RepSetting() {
     private val daoSetting = appRoomDb.daoSetting()
     private suspend fun insertDefault() {
         entitySetting = EntitySetting()
-        return withContext(Dispatchers.IO) { daoSetting.insertAll(entitySetting!!) }
+        return withContext(Dispatchers.IO) { daoSetting.insert(entitySetting!!) }
     }
     private suspend fun getCurrent(): EntitySetting? {
         entitySetting = withContext(Dispatchers.IO) {

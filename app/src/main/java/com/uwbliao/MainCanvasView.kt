@@ -14,6 +14,7 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -22,10 +23,12 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.uwbliao.databinding.BlacklistDspBinding
 import com.uwbliao.databinding.RemoteDevDspBinding
 import com.uwbliao.db.EntityDevice
+import com.uwbliao.db.RepChatMsg
 import com.uwbliao.db.RepDevice
 import com.uwbliao.recycler.BlacklistRecyclerAdapter
 import com.uwbliao.recycler.BlacklistRecyclerItem
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.apache.commons.math3.distribution.UniformIntegerDistribution
 import kotlin.math.cos
 import kotlin.math.sin
@@ -332,46 +335,15 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
                 + remoteDevs[idx].nickname.toString()).also { mBinding.txtNickname.text = it }
         (Utils.realDistanceFromCoordinateDistance(remoteDevs[idx].distance, myDistanceRatio())
             .formatDecimalPoint1() + "m").also { mBinding.txtDistance.text = it }
+        //get latest in/out msg
+        val repChatMsg = RepChatMsg()
+        var entityChatMsg = runBlocking { repChatMsg.getNewestChatMsg(remoteDevs[idx].deviceName) }
         //favorite icon
         when(remoteDevs[idx].interest) {
             Interest.INTERESTED -> {
                 mBinding.imgInterest.setImageResource(R.drawable.ic_favorite)
             }
         }
-        //comment text
-        mBinding.txtComment.setText(remoteDevs[idx].comment)
-        //cancel button
-        mBinding.btnCancel.setOnClickListener {
-            dlg.dismiss()
-        }
-        //okay button
-        mBinding.btnOkay.setOnClickListener {
-            dlg.dismiss()
-        }
-        //text send action// combine with xml setting -> android:imeOptions="actionSend"
-        mBinding.txtNickname.setOnEditorActionListener { v, actionId, event ->
-            var handled = false
-            if (actionId == EditorInfo.IME_ACTION_SEND) {
-                dlg.dismiss()
-                handled = true
-            }
-            handled
-        }
-        //comment text
-        mBinding.txtComment.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable) {}
-            override fun beforeTextChanged(
-                s: CharSequence, start: Int,count: Int, after: Int
-            ) {}
-            override fun onTextChanged(
-                s: CharSequence, start: Int, before: Int, count: Int
-            ) {
-                remoteDevs[idx].comment = s.toString()
-                val repdev = RepDevice(remoteDevs[idx].deviceName)
-                lifecycleScope.launch { repdev.updateDevice(remoteDevs[idx]) }
-            }
-        })
-        //favorite icon
         mBinding.imgInterest.setOnClickListener {
             when(remoteDevs[idx].interest) {
                 Interest.INTERESTED -> {
@@ -387,6 +359,64 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             val repdev = RepDevice(remoteDevs[idx].deviceName)
             lifecycleScope.launch { repdev.updateDevice(remoteDevs[idx]) }
         }
+        //comment text
+        mBinding.txtComment.setText(remoteDevs[idx].comment)
+        mBinding.txtComment.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable) {}
+            override fun beforeTextChanged(
+                s: CharSequence, start: Int,count: Int, after: Int
+            ) {}
+            override fun onTextChanged(
+                s: CharSequence, start: Int, before: Int, count: Int
+            ) {
+                remoteDevs[idx].comment = s.toString()
+                val repdev = RepDevice(remoteDevs[idx].deviceName)
+                lifecycleScope.launch { repdev.updateDevice(remoteDevs[idx]) }
+            }
+        })
+        //cancel button
+        mBinding.btnCancel.setOnClickListener {
+            dlg.dismiss()
+        }
+        //okay button
+        mBinding.btnOkay.setOnClickListener {
+            dlg.dismiss()
+        }
+        //in/out msg
+        if(entityChatMsg != null){
+            when(entityChatMsg.type) {
+                ChatMsgType.IN -> mBinding.txtMsgIn.setText(entityChatMsg!!.msg)
+                ChatMsgType.OUT -> mBinding.txtMsgOut.setText(entityChatMsg!!.msg)
+            }
+        }
+        //send out msg
+        mBinding.txtMsgOut.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable) {
+                setSendButtonVisibility(mBinding)
+            }
+            override fun beforeTextChanged(
+                s: CharSequence, start: Int,count: Int, after: Int
+            ) {}
+            override fun onTextChanged(
+                s: CharSequence, start: Int, before: Int, count: Int
+            ) { }
+        })
+        mBinding.txtMsgOut.setOnEditorActionListener { v, actionId, event ->
+            var handled = false
+            if (actionId == EditorInfo.IME_ACTION_SEND) {
+                if(mBinding.txtMsgOut.text.isNotEmpty()) {
+                    sendOutMsg(idx, mBinding.txtMsgOut.text.toString())
+                }
+                handled = true
+            }
+            handled
+        }
+        //text send button
+        setSendButtonVisibility(mBinding)
+        mBinding.imgSend.setOnClickListener {
+            if(mBinding.txtMsgOut.text.isEmpty()) return@setOnClickListener
+            sendOutMsg(idx, mBinding.txtMsgOut.text.toString())
+        }
         //blacklist icon
         mBinding.imgBlacklist.setOnClickListener {
             if(remoteDevs[idx].hide) {
@@ -401,6 +431,14 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             lifecycleScope.launch { repdev.updateDevice(remoteDevs[idx]) }
         }
         dlg.show()
+    }
+    private fun setSendButtonVisibility(mBinding: RemoteDevDspBinding) {
+        mBinding.imgSend.isVisible = !mBinding.txtMsgOut.text.isEmpty()
+    }
+    private fun sendOutMsg(idx: Int, msg: String) {
+        //save to db
+        val rep = RepChatMsg()
+        lifecycleScope.launch { rep.insertChatMsg(remoteDevs[idx].deviceName, ChatMsgType.OUT, msg) }
     }
     //display blacklist dialog
     private fun displayBlacklist() {

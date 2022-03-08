@@ -19,7 +19,7 @@ interface DaoSetting {
     fun findByName(first: String, last: String): EntitySetting?
 
     @Insert
-    fun insertAll(vararg users: EntitySetting)
+    fun insert(vararg users: EntitySetting)
 
     @Update
     fun update(vararg users: EntitySetting)

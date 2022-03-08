@@ -1,7 +1,6 @@
 package com.uwbliao.db
 
 import androidx.room.*
-import com.google.protobuf.LazyStringArrayList
 
 @Dao
 interface DaoDevice {
@@ -15,7 +14,7 @@ interface DaoDevice {
     fun findByName(name: String): EntityDevice
 
     @Insert
-    fun insertAll(vararg devices: EntityDevice)
+    fun insert(vararg devices: EntityDevice)
 
     @Update
     fun update(vararg devices: EntityDevice)
