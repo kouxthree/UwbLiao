@@ -1,7 +1,10 @@
 package com.uwbliao
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.app.AlertDialog
 import android.content.Context
+import android.content.DialogInterface
 import android.graphics.*
 import android.os.Handler
 import android.os.Looper
@@ -11,6 +14,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
+import android.view.animation.TranslateAnimation
 import android.view.inputmethod.EditorInfo
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.res.ResourcesCompat
@@ -337,7 +341,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             .formatDecimalPoint1() + "m").also { mBinding.txtDistance.text = it }
         //get latest in/out msg
         val repChatMsg = RepChatMsg()
-        var entityChatMsg = runBlocking { repChatMsg.getNewestChatMsg(remoteDevs[idx].deviceName) }
+        val entityChatMsg = runBlocking { repChatMsg.getNewestChatMsg(remoteDevs[idx].deviceName) }
         //favorite icon
         when(remoteDevs[idx].interest) {
             Interest.INTERESTED -> {
@@ -382,17 +386,14 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         mBinding.btnOkay.setOnClickListener {
             dlg.dismiss()
         }
-        //in/out msg
-        if(entityChatMsg != null){
-            when(entityChatMsg.type) {
-                ChatMsgType.IN -> mBinding.txtMsgIn.setText(entityChatMsg!!.msg)
-                ChatMsgType.OUT -> mBinding.txtMsgOut.setText(entityChatMsg!!.msg)
-            }
+        //last msg
+        if(entityChatMsg != null && !entityChatMsg.msg.isNullOrEmpty()) {
+            setLastMsg(mBinding, entityChatMsg.type, entityChatMsg.msg)
         }
         //send out msg
         mBinding.txtMsgOut.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable) {
-                setSendButtonVisibility(mBinding)
+                setSendButtonVisibility(dlg, mBinding)
             }
             override fun beforeTextChanged(
                 s: CharSequence, start: Int,count: Int, after: Int
@@ -404,18 +405,18 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         mBinding.txtMsgOut.setOnEditorActionListener { v, actionId, event ->
             var handled = false
             if (actionId == EditorInfo.IME_ACTION_SEND) {
-                if(mBinding.txtMsgOut.text.isNotEmpty()) {
-                    sendOutMsg(idx, mBinding.txtMsgOut.text.toString())
+                if(!mBinding.txtMsgOut.text.isNullOrEmpty()) {
+                    sendOutMsg(mBinding, idx, mBinding.txtMsgOut.text.toString())
                 }
                 handled = true
             }
             handled
         }
         //text send button
-        setSendButtonVisibility(mBinding)
+        mBinding.imgSend.isVisible = !mBinding.txtMsgOut.text.isNullOrEmpty()
         mBinding.imgSend.setOnClickListener {
-            if(mBinding.txtMsgOut.text.isEmpty()) return@setOnClickListener
-            sendOutMsg(idx, mBinding.txtMsgOut.text.toString())
+            if(mBinding.txtMsgOut.text.isNullOrEmpty()) return@setOnClickListener
+            sendOutMsg(mBinding, idx, mBinding.txtMsgOut.text.toString())
         }
         //blacklist icon
         mBinding.imgBlacklist.setOnClickListener {
@@ -430,15 +431,84 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
             val repdev = RepDevice(remoteDevs[idx].deviceName)
             lifecycleScope.launch { repdev.updateDevice(remoteDevs[idx]) }
         }
+        //show dialog
+        dlg.setOnShowListener(object: DialogInterface.OnShowListener {
+            override fun onShow(p0: DialogInterface?) {
+                //TODO("Not yet implemented")
+            }
+        })
         dlg.show()
     }
-    private fun setSendButtonVisibility(mBinding: RemoteDevDspBinding) {
-        mBinding.imgSend.isVisible = !mBinding.txtMsgOut.text.isEmpty()
+    private fun setLastMsg(mBinding: RemoteDevDspBinding, msgType: Int, msg: String) {
+        var pre = ""
+        when (msgType) {
+            ChatMsgType.IN ->  pre = resources.getString(R.string.txt_chat_msg_in)
+            ChatMsgType.OUT -> pre = resources.getString(R.string.txt_chat_msg_out)
+        }
+        mBinding.txtMsgLast.text = pre.plus(": ").plus(msg)
     }
-    private fun sendOutMsg(idx: Int, msg: String) {
+    private fun setSendButtonVisibility(dlg: AlertDialog, mBinding: RemoteDevDspBinding) {
+        val v = mBinding.imgSend
+        val boolMsg = !mBinding.txtMsgOut.text.isNullOrEmpty()
+        val boolV = v.isVisible
+        if(boolMsg == boolV) return
+/*
+//        if(dlg.window == null || dlg.window!!.attributes == null) {
+//            v.isVisible = boolMsg
+//            return
+//        }
+//        val lpdlg = WindowManager.LayoutParams()
+//        lpdlg.copyFrom(dlg.window!!.attributes!!)
+//        v.layoutParams.layoutAnimationParameters
+//        var moveToX = mBinding.txtMsgOut.width.toFloat()
+//        if(!boolMsg) {
+//            moveToX -= v.width.toFloat()
+//        }
+//        v.animate().x(20f).setDuration(1000).start()
+//        v.isVisible = boolMsg
+ */
+        if(boolMsg) {
+            //slide in
+            val animate = TranslateAnimation(
+                v.width.toFloat(),0f,
+                0f, 0f)
+            animate.duration = 500
+            animate.fillAfter = true
+//            v.visibility = VISIBLE
+            v.startAnimation(animate)
+            v.apply {
+                    alpha = 0f
+                    visibility = VISIBLE
+                    animate()
+                        .alpha(1f)
+                        .setDuration(500)
+                        .setListener(null)
+                }
+        } else {
+            //fade out
+            val animate = TranslateAnimation(
+                0f,v.width.toFloat(),
+                0f, 0f)
+            animate.duration = 500
+            animate.fillAfter = true
+            v.startAnimation(animate)
+//            v.visibility = GONE
+            v.animate()
+                .alpha(0f)
+                .setDuration(500)
+                .setListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) {
+                        v.visibility = GONE
+                    }
+                })
+        }
+    }
+    private fun sendOutMsg(mBinding: RemoteDevDspBinding, idx: Int, msg: String) {
         //save to db
         val rep = RepChatMsg()
         lifecycleScope.launch { rep.insertChatMsg(remoteDevs[idx].deviceName, ChatMsgType.OUT, msg) }
+        setLastMsg(mBinding, ChatMsgType.OUT, msg)
+        mBinding.txtMsgOut.setText("")
     }
     //display blacklist dialog
     private fun displayBlacklist() {

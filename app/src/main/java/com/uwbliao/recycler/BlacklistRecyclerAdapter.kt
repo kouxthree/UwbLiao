@@ -142,7 +142,7 @@ class BlacklistRecyclerAdapter(private val blacklistDspBinding: BlacklistDspBind
         }
 
         private fun removeBlacklistItem(v: View) {
-              val removedPos = adapterPosition
+            val removedPos = adapterPosition
             //remove from list
             itemsList.removeAt(adapterPosition)
             notifyItemRemoved(adapterPosition)

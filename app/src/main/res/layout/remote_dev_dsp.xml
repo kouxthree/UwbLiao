@@ -19,7 +19,7 @@
         android:textSize="22sp" />
 
     <TextView
-        android:id="@+id/txt_msg_in"
+        android:id="@+id/txt_msg_last"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
@@ -48,6 +48,7 @@
             android:id="@+id/img_send"
             android:layout_weight="0.1"
             android:layout_marginTop="10dp"
+            android:layout_marginBottom="5dp"
             android:src="@drawable/ic_send"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
