@@ -109,4 +109,8 @@ class BlacklistRec(screenWidth: Int, screenHeight: Int) {
         return (x in screenWidth-(width+right) .. screenWidth-right)
                 && (y in screenHeight-(bottom+height) .. screenHeight-bottom)
     }
+    fun abouthit(x: Int, y: Int): Boolean {
+        return (x in screenWidth-(width+right)*2 .. screenWidth-right*2)
+                && (y in screenHeight-(bottom+height)*2 .. screenHeight-bottom*2)
+    }
 }

@@ -10,14 +10,14 @@ import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
-import android.view.LayoutInflater
-import android.view.MotionEvent
-import android.view.ScaleGestureDetector
-import android.view.View
+import android.util.AttributeSet
+import android.view.*
 import android.view.animation.TranslateAnimation
 import android.view.inputmethod.EditorInfo
+import android.widget.ImageView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.view.MotionEventCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -34,21 +34,41 @@ import com.uwbliao.recycler.BlacklistRecyclerItem
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.commons.math3.distribution.UniformIntegerDistribution
+import kotlin.math.abs
+import kotlin.math.absoluteValue
 import kotlin.math.cos
 import kotlin.math.sin
 
-open class MainCanvasView(context: Context): View(context), LifecycleOwner {
-    private lateinit var bitmapCompass: Bitmap
+
+//open class MainCanvasView(context: Context): View(context), LifecycleOwner {
+open class MainCanvasView: View, LifecycleOwner {
     init {
-        initCompass()
+        initBitmapIcons()
     }
-    private fun initCompass() {
+    constructor(context: Context) : super(context) {
+        init(null, 0)
+    }
+    constructor(context: Context, attrs: AttributeSet) : super(context, attrs) {
+        init(attrs, 0)
+    }
+    constructor(context: Context, attrs: AttributeSet, defStyle: Int) : super(context, attrs, defStyle) {
+        init(attrs, defStyle)
+    }
+    private fun init(attrs: AttributeSet?, defStyle: Int) {
+        // do something
+    }
+    private lateinit var bitmapCompass: Bitmap
+    private fun initBitmapIcons() {
+        //compass
         bitmapCompass = BitmapFactory.decodeResource(resources, R.drawable.compass_needle)
         bitmapCompass = Bitmap.createScaledBitmap(
             bitmapCompass, bitmapCompass.width/3, bitmapCompass.height/3, true
         )
+        //drag_image
+        if(dragImage != null) dragImage!!.isVisible = false
     }
-    private lateinit var dirSensor: DirSensor
+//    private lateinit var dirSensor: DirSensor
+    private var dirSensor = DirSensor(context)
     private var mDispMode = DispMode.DEFAULT
     private var horizontalRadius = 0f
     private var remoteDevs = mutableListOf<EntityDevice>()
@@ -62,8 +82,8 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
 //        })
     }
     fun initRemoteDevs() {
-        //direction sensor
-        dirSensor = DirSensor(context)
+//        //direction sensor
+//        dirSensor = DirSensor(context)
         //remote dev init
         remoteDevs = mutableListOf()
         for(i in 0 until SettingActivity.scanRemoteNums) {
@@ -166,6 +186,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
     private val remoteVeryInterestedColor = ResourcesCompat.getColor(resources, R.color.remoteVeryInterestedPaint, null)
     private var centerX = 0f
     private var centerY = 0f
+    private lateinit var longPressGestureDetector: GestureDetector
     private lateinit var scaleGestureDetector: ScaleGestureDetector
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -179,12 +200,27 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         infoRefreshHandler.removeCallbacks(infoRefreshTask)
         infoRefreshHandler.post(infoRefreshTask)
 
+        // create long press gesture listener
+        longPressGestureDetector = GestureDetector(context, longPressListener)
         // Create the new scale gesture detector object use above pinch zoom gesture listener.
         scaleGestureDetector = ScaleGestureDetector(context, pinchListener)
     }
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         canvas.drawBitmap(extraBitmap, 0f, 0f, null)
+    }
+    private var tappedDevIdx: Int? = null
+    private var touchStartX = 0
+    private var touchStartY = 0
+    private fun moveDragImageX(x: Int): Float {
+        return x.toFloat() - dragImage!!.width/2
+    }
+    private fun moveDragImageY(y: Int): Float {
+        return y.toFloat() - dragImage!!.height/2
+    }
+    private fun moveDragImage(x: Int, y: Int) {
+        dragImage!!.x = moveDragImageX(x)
+        dragImage!!.y = moveDragImageY(y)
     }
     override fun onTouchEvent(event: MotionEvent): Boolean {
         super.onTouchEvent(event)
@@ -195,22 +231,54 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         val blacklistRec = BlacklistRec(width, height)
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                var tappedI: Int? = null
+                touchStartX = x
+                touchStartY = y
                 var preD = TAP_ACCURACY.toDouble()
                 for(i in 0 until SettingActivity.scanRemoteNums) {
                     val d = Utils.distanceBetweenPoints(
                         remoteDevs[i].currentx.toInt(), remoteDevs[i].currenty.toInt(),
                         x, y)
                     if(d <= preD) {
-                        if(tappedI == null) tappedI = i
-                        else if(d <= preD) tappedI = i
+                        if(tappedDevIdx == null) tappedDevIdx = i
+                        else if(d <= preD) tappedDevIdx = i
                         preD = d
                     }
                 }
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if(tappedDevIdx != null) {
+                    dragImage!!.isVisible = true
+                    dragImage!!.animate().x(moveDragImageX(x)).setDuration(0).start()
+                    dragImage!!.animate().y(moveDragImageX(y)).setDuration(0).start()
+                }
+            }
+            MotionEvent.ACTION_UP,
+            MotionEvent.ACTION_CANCEL -> {
                 when {
-                    tappedI != null -> {
-                        //remote device tapped
-                        displayRemoteDevice(tappedI)
+                    tappedDevIdx != null -> {
+                        val movedX = abs(event.x.toInt() - touchStartX)//moved x distance
+                        val movedY = abs(event.y.toInt() - touchStartY)//moved y distance
+                        if(blacklistRec.abouthit(x, y)) {
+                            //remove remote device to blacklist
+                            remoteDevs[tappedDevIdx!!].hide = true
+                            dragImage!!.isVisible = false
+                        } else if(movedX.absoluteValue > 0 || movedY.absoluteValue > 0) {
+                            //move back to its initial location
+                            dragImage!!.animate().x(moveDragImageX(touchStartX)).setDuration(500)
+                                .start()
+                            dragImage!!.animate().y(moveDragImageX(touchStartY)).setDuration(500)
+                                .setListener(
+                                    object : AnimatorListenerAdapter() {
+                                        override fun onAnimationEnd(animation: Animator) {
+                                            dragImage!!.isVisible = false
+                                        }
+                                    }
+                                ).start()
+                        } else {
+                            //remote device tapped
+                            displayRemoteDevice(tappedDevIdx!!)
+                            dragImage!!.isVisible = false
+                        }
                     }
                     zoomInRec.hit(x,y) -> {
                         //zoom in
@@ -232,19 +300,34 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
                         return true
                     }
                 }
-            }
-            MotionEvent.ACTION_MOVE -> {
-
-            }
-            MotionEvent.ACTION_UP -> {
-
+                touchStartX = 0//reinitialization
+                touchStartY = 0//reinitialization
+                tappedDevIdx = null
             }
         }
 
-        //other event
+        //dispatch touch event to long press gesture
+        longPressGestureDetector.onTouchEvent(event)
         //dispatch touch event to scale gesture
         scaleGestureDetector.onTouchEvent(event)
         return true
+    }
+    private val longPressListener = object: GestureDetector.SimpleOnGestureListener() {
+        override fun onLongPress(e: MotionEvent) {
+            super.onLongPress(e)
+            if(tappedDevIdx != null) {
+                when(remoteDevs[tappedDevIdx!!].gender) {
+                    Gender.MALE -> {
+                        dragImage!!.setImageResource(R.drawable.male)
+                    }
+                    Gender.FEMALE -> {
+                        dragImage!!.setImageResource(R.drawable.female)
+                    }
+                }
+                moveDragImage(e.x.toInt(), e.y.toInt())
+                dragImage!!.isVisible = true
+            }
+        }
     }
     private val pinchListener = object: ScaleGestureDetector.SimpleOnScaleGestureListener() {
 //        override fun onScaleBegin(detector: ScaleGestureDetector?): Boolean {
@@ -629,6 +712,8 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         drawBlacklist()
     }
     private fun drawRemote(i: Int, remoteDev: EntityDevice) {
+        if(i == tappedDevIdx) return//do not draw device being dragged
+        if(remoteDevs[i].hide) return//do not draw device listed in blacklist
 //        val theta = remoteDev.theta + Math.PI/2 - dirSensor.orientAngel.value!!
         val theta = remoteDev.theta + Math.PI/2 - DirSensor.orientAngel
         val drawdistance = remoteDev.distance!!*(horizontalRadius*2/width)
@@ -671,7 +756,7 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
         for(i in 2 until SettingActivity.scanRemoteNums) {
             if(i > remoteDevs.size-1) break
             if(remoteDevs[i].distance == null) updateRemoteLocation(remoteDevs[i])
-            if(!remoteDevs[i].hide) drawRemote(i, remoteDevs[i])
+            drawRemote(i, remoteDevs[i])
         }
     }
     private fun updateRemoteLocation(remoteDev: EntityDevice) {
@@ -731,5 +816,6 @@ open class MainCanvasView(context: Context): View(context), LifecycleOwner {
 
     companion object {
         private val TAG = MainCanvasView::class.java.simpleName
+        var dragImage: ImageView? = null
     }
 }
