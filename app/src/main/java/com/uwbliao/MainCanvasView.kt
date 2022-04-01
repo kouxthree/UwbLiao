@@ -250,7 +250,7 @@ open class MainCanvasView: View, LifecycleOwner {
             MotionEvent.ACTION_MOVE -> {
                 if(tappedDevIdx != null) {
                     dragImage!!.animate().x(moveDragImageX(x)).setDuration(0).start()
-                    dragImage!!.animate().y(moveDragImageX(y)).setDuration(0).start()
+                    dragImage!!.animate().y(moveDragImageY(y)).setDuration(0).start()
                 }
             }
             MotionEvent.ACTION_UP,
@@ -266,7 +266,7 @@ open class MainCanvasView: View, LifecycleOwner {
                             //move back to its initial location
                             dragImage!!.animate().x(moveDragImageX(touchStartX)).setDuration(500)
                                 .start()
-                            dragImage!!.animate().y(moveDragImageX(touchStartY)).setDuration(500).start()
+                            dragImage!!.animate().y(moveDragImageY(touchStartY)).setDuration(500).start()
                         } else {
                             //remote device tapped
                             displayRemoteDevice(tappedDevIdx!!)
