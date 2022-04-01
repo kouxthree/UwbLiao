@@ -54,6 +54,7 @@ class MainActivity : AppCompatActivity() {
         })
         //pass drag_image_view to main_canvas_view for image motion
         MainCanvasView.dragImage = binding.imgDrag
+        MainCanvasView.dragImage!!.alpha = 0f//invisible
     }
 
 //    private lateinit var mainCanvasView: MainCanvasView

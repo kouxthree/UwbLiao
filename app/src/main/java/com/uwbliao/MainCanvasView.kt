@@ -17,7 +17,6 @@ import android.view.inputmethod.EditorInfo
 import android.widget.ImageView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.res.ResourcesCompat
-import androidx.core.view.MotionEventCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -64,11 +63,8 @@ open class MainCanvasView: View, LifecycleOwner {
         bitmapCompass = Bitmap.createScaledBitmap(
             bitmapCompass, bitmapCompass.width/3, bitmapCompass.height/3, true
         )
-        //drag_image
-        if(dragImage != null) dragImage!!.isVisible = false
     }
-//    private lateinit var dirSensor: DirSensor
-    private var dirSensor = DirSensor(context)
+    private lateinit var dirSensor: DirSensor
     private var mDispMode = DispMode.DEFAULT
     private var horizontalRadius = 0f
     private var remoteDevs = mutableListOf<EntityDevice>()
@@ -82,8 +78,8 @@ open class MainCanvasView: View, LifecycleOwner {
 //        })
     }
     fun initRemoteDevs() {
-//        //direction sensor
-//        dirSensor = DirSensor(context)
+        //direction sensor
+        dirSensor = DirSensor(context)
         //remote dev init
         remoteDevs = mutableListOf()
         for(i in 0 until SettingActivity.scanRemoteNums) {
@@ -213,10 +209,16 @@ open class MainCanvasView: View, LifecycleOwner {
     private var touchStartX = 0
     private var touchStartY = 0
     private fun moveDragImageX(x: Int): Float {
-        return x.toFloat() - dragImage!!.width/2
+//        return x.toFloat() - dragImage!!.width/2
+        var tmp = x.toFloat() + 50
+        if(tmp > width) tmp = width.toFloat()
+        return tmp
     }
     private fun moveDragImageY(y: Int): Float {
-        return y.toFloat() - dragImage!!.height/2
+//        return y.toFloat() - dragImage!!.height/2
+        var tmp = y.toFloat() - dragImage!!.height/2
+        if(tmp < 0) tmp = 0f
+        return tmp
     }
     private fun moveDragImage(x: Int, y: Int) {
         dragImage!!.x = moveDragImageX(x)
@@ -247,7 +249,6 @@ open class MainCanvasView: View, LifecycleOwner {
             }
             MotionEvent.ACTION_MOVE -> {
                 if(tappedDevIdx != null) {
-                    dragImage!!.isVisible = true
                     dragImage!!.animate().x(moveDragImageX(x)).setDuration(0).start()
                     dragImage!!.animate().y(moveDragImageX(y)).setDuration(0).start()
                 }
@@ -261,23 +262,14 @@ open class MainCanvasView: View, LifecycleOwner {
                         if(blacklistRec.abouthit(x, y)) {
                             //remove remote device to blacklist
                             remoteDevs[tappedDevIdx!!].hide = true
-                            dragImage!!.isVisible = false
                         } else if(movedX.absoluteValue > 0 || movedY.absoluteValue > 0) {
                             //move back to its initial location
                             dragImage!!.animate().x(moveDragImageX(touchStartX)).setDuration(500)
                                 .start()
-                            dragImage!!.animate().y(moveDragImageX(touchStartY)).setDuration(500)
-                                .setListener(
-                                    object : AnimatorListenerAdapter() {
-                                        override fun onAnimationEnd(animation: Animator) {
-                                            dragImage!!.isVisible = false
-                                        }
-                                    }
-                                ).start()
+                            dragImage!!.animate().y(moveDragImageX(touchStartY)).setDuration(500).start()
                         } else {
                             //remote device tapped
                             displayRemoteDevice(tappedDevIdx!!)
-                            dragImage!!.isVisible = false
                         }
                     }
                     zoomInRec.hit(x,y) -> {
@@ -303,6 +295,7 @@ open class MainCanvasView: View, LifecycleOwner {
                 touchStartX = 0//reinitialization
                 touchStartY = 0//reinitialization
                 tappedDevIdx = null
+                dragImage!!.animate().alpha(0.0f).setDuration(500);
             }
         }
 
@@ -314,7 +307,7 @@ open class MainCanvasView: View, LifecycleOwner {
     }
     private val longPressListener = object: GestureDetector.SimpleOnGestureListener() {
         override fun onLongPress(e: MotionEvent) {
-            super.onLongPress(e)
+//            super.onLongPress(e)
             if(tappedDevIdx != null) {
                 when(remoteDevs[tappedDevIdx!!].gender) {
                     Gender.MALE -> {
@@ -325,7 +318,7 @@ open class MainCanvasView: View, LifecycleOwner {
                     }
                 }
                 moveDragImage(e.x.toInt(), e.y.toInt())
-                dragImage!!.isVisible = true
+                dragImage!!.alpha = 1.0f
             }
         }
     }
