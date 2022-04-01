@@ -210,13 +210,14 @@ open class MainCanvasView: View, LifecycleOwner {
     private var touchStartY = 0
     private fun moveDragImageX(x: Int): Float {
 //        return x.toFloat() - dragImage!!.width/2
-        var tmp = x.toFloat() + 50
-        if(tmp > width) tmp = width.toFloat()
+        var tmp = x.toFloat() - dragImage!!.width/2
+        //if(tmp > width) tmp = width.toFloat()
+        if(tmp < 0) tmp = 0f
         return tmp
     }
     private fun moveDragImageY(y: Int): Float {
 //        return y.toFloat() - dragImage!!.height/2
-        var tmp = y.toFloat() - dragImage!!.height/2
+        var tmp = y.toFloat() - dragImage!!.height/2 - 100f
         if(tmp < 0) tmp = 0f
         return tmp
     }
